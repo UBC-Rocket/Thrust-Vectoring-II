@@ -2,6 +2,7 @@
 #include <Wire.h>
 #include <ICM20948_WE.h>
 #define ICM20948_ADDR 0x68
+#include <ESP32Servo.h>
 
 /* There are several ways to create your ICM20948 object:
  * ICM20948_WE myIMU = ICM20948_WE()              -> uses Wire / I2C Address = 0x68
@@ -12,6 +13,8 @@
  * ICM20948_WE myIMU = ICM20948_WE(&SPI, CS_PIN, spi);  -> uses SPI / passes the SPI object, spi is just a flag, see SPI example
  */
 ICM20948_WE myIMU = ICM20948_WE(ICM20948_ADDR);
+Servo gimbal_x;
+Servo gimbal_y;
 
 void setup() {
   //delay(2000); // maybe needed for some MCUs, in particular for startup after power off
@@ -25,6 +28,9 @@ void setup() {
   else{
     Serial.println("ICM20948 is connected");
   }
+
+  gimbal_x.attach(16, 1000, 2000);
+  gimbal_y.attach(17, 1000, 2000);
 
   /*  This is a method to calibrate. You have to determine the minimum and maximum 
    *  raw acceleration values of the axes determined in the range +/- 2 g. 
@@ -120,5 +126,7 @@ void loop() {
   Serial.print("Orientation of the module: ");
   Serial.println(myIMU.getOrientationAsString());
 
-  delay(1000);
+  gimbal_x.write(angle.x*5);
+  gimbal_y.write(angle.y*5);
+
 }
