@@ -95,19 +95,9 @@ void loop() {
   xyzFloat gValue = myIMU.getGValues();
   xyzFloat angle = myIMU.getAngles();
 
-  // Circular motion of servos (optional - original logic)
-  int radius = 90;
-  int center = 90;
-  float anglee;
-
-  for (int deg = 0; deg <= 360; deg++) {
-    anglee = radians(deg);
-    int pos_x = center + radius * cos(anglee);
-    int pos_y = center + radius * sin(anglee);
-    gimbal_x.write(pos_x);
-    gimbal_y.write(pos_y);
-    delay(5);
-  }
+  
+  gimbal_x.write(angle.x*5);
+  gimbal_y.write(angle.y*5);
 
   // Check for new client connection
   WiFiClient client = wifiServer.available();
