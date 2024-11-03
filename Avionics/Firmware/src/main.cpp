@@ -4,6 +4,7 @@
 #define ICM20948_ADDR 0x68
 #include <ESP32Servo.h>
 #include <WiFi.h>
+#include <PID_v1.h>
 
 // Wi-Fi credentials
 const char *ssid = "TVR";
@@ -19,6 +20,27 @@ String receivedMessage = "";
 ICM20948_WE myIMU = ICM20948_WE(ICM20948_ADDR);
 Servo gimbal_x;
 Servo gimbal_y;
+
+// PID Values
+const double Kp = 1, Ki = 0, Kd = 0;
+
+// PID variables for X axis
+double setpointX = 0.0, inputX, outputX; // setpointX = what we want the pitch angle to be; inputX is the current pitch angle; and outputX feeds to servoX to correct offset)
+PID pidX(&inputX, &outputX, &setpointX, Kp, Ki, Kd, DIRECT);
+
+// PID variables for Y axis
+double setpointY = 0.0, inputY, outputY; // setpointY = what we want the roll angle to be; inputY is the current roll angle; and outputY feeds to servoY to correct offset)
+PID pidY(&inputY, &outputY, &setpointY, Kp, Ki, Kd, DIRECT);
+
+// Initialize PID controllers
+pidX.SetMode(AUTOMATIC);
+pidY.SetMode(AUTOMATIC);
+pidX.SetOutputLimits(-20,20);
+pidY.SetOutputLimits(-20,20);
+
+// Servo objects
+Servo servoX;   // x-axis servo (outer gimbal)
+Servo servoY;   // y-axis servo (inner gimbal)
 
 // PMOS and NMOS pins
 const int PMOS_PIN = 26;  // Example pin for PMOS
@@ -95,11 +117,15 @@ void loop() {
   xyzFloat gValue = myIMU.getGValues();
   xyzFloat angle = myIMU.getAngles();
 
-  
-  gimbal_x.write(angle.x*5);
-  gimbal_y.write(angle.y*5);
+  inputX = angle.x;
+  pidX.Compute();
+  servoX.write(outputX);
 
-  // Check for new client connection
+  inputX = angle.y;
+  pidX.Compute();
+  servoX.write(outputY);
+
+  // REMOTE IGNITION: Check for new client connection
   WiFiClient client = wifiServer.available();
   if (client) {
     Serial.println("New Client Connected.");
