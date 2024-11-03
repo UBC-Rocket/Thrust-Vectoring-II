@@ -1,92 +1,85 @@
 #include <Arduino.h>
 #include <Wire.h>
 #include <ICM20948_WE.h>
-#define ICM20948_ADDR 0x68
 #include <ESP32Servo.h>
 #include <WiFi.h>
 #include <PID_v1.h>
 
-// Wi-Fi credentials
+// Define ICM20948 I2C Address and Wi-Fi credentials
+#define ICM20948_ADDR 0x68
 const char *ssid = "TVR";
 const char *password = "12345678";
 
-// Wi-Fi server on port 80
+// Wi-Fi server setup
 WiFiServer wifiServer(80);
+String receivedMessage = ""; // Store received messages
 
-// Store the received command/message
-String receivedMessage = "";
-
-// ICM20948 IMU and Servo Setup
+// Initialize IMU (ICM20948), Servo Motors, and Servo Offsets
 ICM20948_WE myIMU = ICM20948_WE(ICM20948_ADDR);
 Servo gimbal_x;
 Servo gimbal_y;
+const int servoxinit = 60, servoyinit = 70; // Servo initial positions
 
-// PID Values
+// PID Controller Constants and Variables for X and Y Axes
 const double Kp = 1, Ki = 0, Kd = 0;
+double setpointX = 0.0, inputX, outputX; // X-axis PID variables
+double setpointY = 0.0, inputY, outputY; // Y-axis PID variables
 
-// PID variables for X axis
-double setpointX = 0.0, inputX, outputX; // setpointX = what we want the pitch angle to be; inputX is the current pitch angle; and outputX feeds to servoX to correct offset)
+// Initialize PID controllers for X and Y axes
 PID pidX(&inputX, &outputX, &setpointX, Kp, Ki, Kd, DIRECT);
-
-// PID variables for Y axis
-double setpointY = 0.0, inputY, outputY; // setpointY = what we want the roll angle to be; inputY is the current roll angle; and outputY feeds to servoY to correct offset)
 PID pidY(&inputY, &outputY, &setpointY, Kp, Ki, Kd, DIRECT);
 
-// Initialize PID controllers
-pidX.SetMode(AUTOMATIC);
-pidY.SetMode(AUTOMATIC);
-pidX.SetOutputLimits(-20,20);
-pidY.SetOutputLimits(-20,20);
-
-// Servo objects
-Servo servoX;   // x-axis servo (outer gimbal)
-Servo servoY;   // y-axis servo (inner gimbal)
-
-// PMOS and NMOS pins
-const int PMOS_PIN = 26;  // Example pin for PMOS
-const int NMOS_PIN = 25;  // Example pin for NMOS
-
-// Current states of PMOS and NMOS
+// PMOS and NMOS pins for remote ignition control
+const int PMOS_PIN = 26;
+const int NMOS_PIN = 25;
 bool pmosState = true;
 bool nmosState = false;
 
 void setup() {
+  // Setup serial communication and I2C bus
   Wire.begin();
   Serial.begin(115200);
 
-  // Initialize Wi-Fi as an Access Point
+  // Configure Wi-Fi Access Point
   Serial.println("Setting up Wi-Fi Access Point...");
   WiFi.softAP(ssid, password);
   IPAddress IP = WiFi.softAPIP();
   Serial.print("Access Point IP: ");
   Serial.println(IP);
-
-  // Start the Wi-Fi server
+  
+  // Start Wi-Fi server for remote ignition control
   wifiServer.begin();
   Serial.println("Wi-Fi server started.");
 
-  // Initialize IMU
+  // Initialize and calibrate IMU
   if (!myIMU.init()) {
     Serial.println("ICM20948 does not respond");
   } else {
     Serial.println("ICM20948 is connected");
   }
 
-  // Attach servos to pins
+  // Attach servos to GPIO pins with appropriate PWM parameters
   gimbal_x.attach(16, 1000, 2000);
   gimbal_y.attach(17, 1000, 2000);
 
-  // IMU calibration
+  // Initialize PID controllers and set output limits for stabilization
+  pidX.SetMode(AUTOMATIC);
+  pidY.SetMode(AUTOMATIC);
+  pidX.SetOutputLimits(-20, 20);
+  pidY.SetOutputLimits(-20, 20);
+
+  // Calibrate IMU to set zero offsets
   Serial.println("Position your ICM20948 flat and don't move it - calibrating...");
   delay(1000);
   myIMU.autoOffsets();
   Serial.println("Done!");
 
+  // Configure IMU settings for accelerometer sensitivity and filter
   myIMU.setAccRange(ICM20948_ACC_RANGE_2G);
   myIMU.setAccDLPF(ICM20948_DLPF_6);
   myIMU.setAccSampleRateDivider(10);
 
-  // Initialize PMOS and NMOS pins as outputs
+  // Initialize PMOS and NMOS pins as outputs for ignition control
   pinMode(PMOS_PIN, OUTPUT);
   pinMode(NMOS_PIN, OUTPUT);
 
@@ -95,16 +88,14 @@ void setup() {
   digitalWrite(NMOS_PIN, nmosState);
 }
 
+// Flip PMOS and NMOS states for ignition control
 void flipPMOS_NMOS() {
-  // Flip the states of PMOS and NMOS
-  pmosState = !pmosState;
-  nmosState = !nmosState;
-
-  // Set the new states to the pins
+  pmosState = !pmosState;  // Toggle PMOS state
+  nmosState = !nmosState;  // Toggle NMOS state
   digitalWrite(PMOS_PIN, pmosState);
   digitalWrite(NMOS_PIN, nmosState);
 
-  // Debug: Print the new states
+  // Debugging output to monitor PMOS and NMOS states
   Serial.print("PMOS: ");
   Serial.println(pmosState);
   Serial.print("NMOS: ");
@@ -112,42 +103,45 @@ void flipPMOS_NMOS() {
 }
 
 void loop() {
-  // Handle IMU data (optional - original logic)
+  // ======== IMU Data Reading and PID Control for Stabilization ========
+  // Read sensor data from IMU
   myIMU.readSensor();
-  xyzFloat gValue = myIMU.getGValues();
-  xyzFloat angle = myIMU.getAngles();
+  xyzFloat angle = myIMU.getAngles(); // Get current pitch and roll angles
 
-  inputX = angle.x;
-  pidX.Compute();
-  servoX.write(outputX);
+  // Update PID input values with current IMU data
+  inputX = angle.x; // X-axis (pitch) stabilization
+  pidX.Compute();   // Compute PID output for X-axis
+  gimbal_x.write(servoxinit + outputX * 5); // Adjust gimbal X servo
 
-  inputX = angle.y;
-  pidX.Compute();
-  servoX.write(outputY);
+  inputY = angle.y; // Y-axis (roll) stabilization
+  pidY.Compute();   // Compute PID output for Y-axis
+  gimbal_y.write(servoyinit + outputY * 5); // Adjust gimbal Y servo
 
-  // REMOTE IGNITION: Check for new client connection
+  // ======== Remote Ignition Control (Wi-Fi Command Listening) ========
+  // Check for new client connection for remote ignition
   WiFiClient client = wifiServer.available();
   if (client) {
     Serial.println("New Client Connected.");
-    String currentLine = "";  // Buffer for incoming data
+    String currentLine = ""; // Buffer for incoming data
 
-    // Read data from the client
+    // Read data from the client connection
     while (client.connected()) {
       if (client.available()) {
         char c = client.read();  // Read each character
 
-        // Debug: Print each character as it arrives
+        // Debugging output for each received character
         Serial.print("Received character: ");
         Serial.println(c);
 
-        // Check if the received character is 'A'
+        // Check if the received character is 'A' to trigger ignition
         if (c == 'A') {
-          flipPMOS_NMOS();  // Call the flip function
+          flipPMOS_NMOS();  // Toggle PMOS and NMOS state
         }
       }
     }
 
-    client.stop();  // Close the connection
+    // Close the client connection once data is processed
+    client.stop();
     Serial.println("Client Disconnected.");
   }
 }
