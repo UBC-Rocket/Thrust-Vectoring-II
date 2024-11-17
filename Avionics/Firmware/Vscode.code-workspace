@@ -1,0 +1,24 @@
+{
+	"folders": [
+		{
+			"path": "../../../Vscode"
+		},
+		{
+			"name": "Example",
+			"path": "../../../../PlatformIO/Projects/Example"
+		},
+		{
+			"name": "TVR",
+			"path": "TVR"
+		},
+		{
+			"name": "Firmware",
+			"path": "."
+		}
+	],
+	"settings": {
+		"files.associations": {
+			"stdio.h": "c"
+		}
+	}
+}
