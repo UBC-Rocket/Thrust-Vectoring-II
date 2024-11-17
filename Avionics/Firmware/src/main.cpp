@@ -12,10 +12,6 @@
 const char *ssid = "TVR";
 const char *password = "12345678";
 
-// Initialize IMU (ICM20948), servo motors, and servo offsets
-Adafruit_ICM20948 imu;
-Servo gimbal_x;
-Servo gimbal_y;
 const int servoxinit = 60, servoyinit = 70; // Servo initial positions
 
 // WiFi server setup
@@ -129,7 +125,7 @@ void loop() {
     gimbal_y.write(servoyinit + outputY * 5); // Adjust gimbal Y servo
   }
 
-  // ======== Remote Ignition Control & Remote CSV Download (Wi-Fi Command Listening) ========
+  // ======== Remote Ignition Control & Remote CSV Download (Wi-Fi Command Listening) ======== //
   WiFiClient client = wifiServer.available();
     if (client) {
         Serial.println("Client connected");
