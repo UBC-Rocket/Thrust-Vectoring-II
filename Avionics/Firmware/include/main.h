@@ -14,6 +14,8 @@
 #define GYRO_CONFIG_1 0x01
 #define ACCEL_CONFIG 0x14
 
+#define SERVO_MULTIPLIER 15
+
 extern const char *ssid;
 extern const char *password;
 extern WiFiServer wifiServer;
@@ -32,12 +34,7 @@ extern PID pidY;
 extern double setpointX, inputX, outputX;
 extern double setpointY, inputY, outputY;
 
-extern const int PMOS_PIN;
-extern const int NMOS_PIN;
-extern bool pmosState;
-extern bool nmosState;
-
 void setLowNoiseMode();
-void flipPMOS_NMOS();
+void beginFlight();
 
 #endif // MAIN_H

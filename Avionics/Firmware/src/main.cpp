@@ -8,18 +8,24 @@
 #include "main.h"
 #include "flightdata.h"
 
-// Wi-Fi credentials
+const bool WAIT_FOR_EMATCH = false; // set to true if this is a real launch/test - 
+                                    // this will prevent data logging and servo movement until the ematch is lit
+
+// IMU
+Adafruit_ICM20948 imu;
+
+// Wi-Fi credentials and server setup
 const char *ssid = "TVR";
 const char *password = "12345678";
-
-const int servoxinit = 60, servoyinit = 70; // Servo initial positions
-
-// WiFi server setup
 WiFiServer wifiServer(80);
 String receivedMessage = "";
-bool done = false; // Whether or not flight is finished
+bool done = false; // Is flight finished
+bool started = false; // Is flight started
 
-// PID Controller Constants and Variables for X and Y Axes
+// Servo, PID Controller Constants and Variables for X and Y Axes
+Servo gimbal_x;
+Servo gimbal_y;
+const int servoxinit = 60, servoyinit = 70; // Servo initial positions
 const double Kp = 1, Ki = 0, Kd = 0;
 double setpointX = 0.0, inputX, outputX; // X-axis PID variables
 double setpointY = 0.0, inputY, outputY; // Y-axis PID variables
@@ -90,8 +96,8 @@ void setup() {
   // Set magnetometer to update 100 times per second
   imu.setMagDataRate(AK09916_MAG_DATARATE_100_HZ);
 
-  // Set gyro and accel data rate divisors such that they update at 100Hz like the magnetometer
-  imu.setGyroRateDivisor(90); // Gyroscope base output data rate is 9kHz
+  // Set gyro and accel data rate divisors
+  imu.setGyroRateDivisor(9); // Gyroscope base output data rate is 9kHz
   imu.setAccelRateDivisor(10);
 
   Serial.println("Keep IMU still. Calibrating gyroscope and accelerometer...");
@@ -110,19 +116,23 @@ void setup() {
 }
 
 void loop() {
-  if (!done) {
+  if ((WAIT_FOR_EMATCH && started && !done) || (!WAIT_FOR_EMATCH && !done)) {
     currentData.update_values();
     // currentData.print_values();
     currentData.save_values();
-
+  
     // Update PID input values with current IMU data
     inputX = currentData.getGyro().x; // X-axis (pitch) stabilization
-    pidX.Compute();   // Compute PID output for X-axis
-    gimbal_x.write(servoxinit + outputX * 5); // Adjust gimbal X servo
+    if (abs(inputX) > 0.01) {
+      pidX.Compute();   // Compute PID output for X-axis
+      gimbal_x.write(servoxinit + outputX * SERVO_MULTIPLIER); // Adjust gimbal X servo
+    }
 
     inputY = currentData.getGyro().y; // Y-axis (roll) stabilization
-    pidY.Compute();   // Compute PID output for Y-axis
-    gimbal_y.write(servoyinit + outputY * 5); // Adjust gimbal Y servo
+    if (abs(inputY) > 0.01) {
+      pidY.Compute();   // Compute PID output for Y-axis
+      gimbal_y.write(servoyinit + outputY * SERVO_MULTIPLIER); // Adjust gimbal Y servo
+    }
   }
 
   // ======== Remote Ignition Control & Remote CSV Download (Wi-Fi Command Listening) ======== //
@@ -136,14 +146,9 @@ void loop() {
         // Wait for a request from the client
         while (client.connected()) {
             if (client.available()) {
-                char c = client.read();  // Read each character
-                request += c;  // Build the request string
-                
-                // Debugging output for each received character
-                Serial.print("Received character: ");
-                Serial.println(c);
+                char c = client.read();  // Reading each character
+                request += c;
 
-                // Check for the end of the line (indicates end of HTTP header)
                 if (c == '\n') {
                     if (currentLine.length() == 0) {
                         // End of client request, process it
@@ -158,43 +163,39 @@ void loop() {
                             client.println();
                             client.println("File not found");
                         }
-                        break;  // Exit the loop after handling the request
+                        break;
                     } else {
-                        // Reset current line for next header line
                         currentLine = "";
                     }
                 } else if (c != '\r') {
-                    // Add characters to the current line (skip '\r')
                     currentLine += c;
                 }
 
-                // Check if the received character is 'A' (outside HTTP handling)
-                if (c == 'A') {
-                    flipPMOS_NMOS();  // Toggle PMOS and NMOS state
-                }
+                if (c == 'A')
+                    beginFlight();
             }
         }
 
-        // Close the connection
         client.stop();
         Serial.println("Client disconnected");
     }
 
-  delay(10); // 10 ms delay = 100 Hz
+  yield();
 }
 
-// Flip PMOS and NMOS states for ignition control
-void flipPMOS_NMOS() {
+// Flip PMOS and NMOS states for ignition control, begin gimbal control and data logging
+void beginFlight() {
+  started = true;
   pmosState = !pmosState;  // Toggle PMOS state
   nmosState = !nmosState;  // Toggle NMOS state
   digitalWrite(PMOS_PIN, pmosState);
   digitalWrite(NMOS_PIN, nmosState);
 
   // Debugging output to monitor PMOS and NMOS states
-  Serial.print("PMOS: ");
-  Serial.println(pmosState);
-  Serial.print("NMOS: ");
-  Serial.println(nmosState);
+  // Serial.print("PMOS: ");
+  // Serial.println(pmosState);
+  // Serial.print("NMOS: ");
+  // Serial.println(nmosState);
 }
 
 // Set low noise modes for both gyroscope and accelerometer

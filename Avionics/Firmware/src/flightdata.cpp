@@ -36,10 +36,18 @@ float FlightData::getTemp() const {
     return temperature;
 }
 
+/*
+* Should add a check here to know when the flight is over (set done = true).
+* Possibly check if max accel has been greater than x and that accel has been < y for z number of checks.
+* So that the csv file isn't unnecessarily massive with zeroes.
+*/
 void FlightData::update_values() {
   time = millis() - startTime;
   sensors_event_t accel, gyro, mag, temp;
   imu.getEvent(&accel, &gyro, &mag, &temp);
+  accel.acceleration.x -= accel_x_offset;
+  accel.acceleration.y -= accel_y_offset;
+  accel.acceleration.z -= accel_z_offset;
   this->acceleration = accel.acceleration;
   gyro.gyro.x -= gyro_x_offset;
   gyro.gyro.y -= gyro_y_offset;
@@ -71,19 +79,10 @@ void FlightData::save_values() {
     return;
   }
 
-  file.print(time); file.print(",");
-  file.print(acceleration.x); file.print(",");
-  file.print(acceleration.y); file.print(",");
-  file.print(acceleration.z); file.print(",");
-  file.print(gyroscope.x); file.print(",");
-  file.print(gyroscope.y); file.print(",");
-  file.print(gyroscope.z); file.print(",");
-  file.print(magnetic.x); file.print(",");
-  file.print(magnetic.y); file.print(",");
-  file.print(magnetic.z); file.print(",");
-  file.println(temperature);
-
-  file.flush();
+  String csvLine = String(time) + "," + String(acceleration.x, 2) + "," + String(acceleration.y, 2) + "," + String(acceleration.z, 2) + "," +
+                 String(gyroscope.x, 2) + "," + String(gyroscope.y, 2) + "," + String(gyroscope.z, 2) + "," +
+                 String(magnetic.x, 2) + "," + String(magnetic.y, 2) + "," + String(magnetic.z, 2) + "," + String(temperature, 2) + "\n";
+  file.print(csvLine);
 }
 
 void initialize_csv() {
@@ -95,12 +94,12 @@ void initialize_csv() {
   Serial.println("Opened file for writing");
 
   file.print("Time (ms)"); file.print(",");
-  file.print("Accel x (m/s^2)"); file.print(",");
-  file.print("Accel y (m/s^2)"); file.print(",");
-  file.print("Accel z (m/s^2)"); file.print(",");
-  file.print("Gyro x (rad/s)"); file.print(",");
-  file.print("Gyro y (rad/s)"); file.print(",");
-  file.print("Gyro z (rad/s)"); file.print(",");
+  file.print("Accel x (+/- 0.1 m/s^2)"); file.print(",");
+  file.print("Accel y (+/- 0.1 m/s^2)"); file.print(",");
+  file.print("Accel z (+/- 0.1 m/s^2)"); file.print(",");
+  file.print("Gyro x (+/- 0.2 rad/s)"); file.print(",");
+  file.print("Gyro y (+/- 0.2 rad/s)"); file.print(",");
+  file.print("Gyro z (+/- 0.2 rad/s)"); file.print(",");
   file.print("Mag x (uT)"); file.print(",");
   file.print("Mag y (uT)"); file.print(",");
   file.print("Mag z (uT)"); file.print(",");
@@ -111,7 +110,7 @@ void initialize_csv() {
 }
 
 void calibrateGyroAccel() {
-    int num_samples = 1000;
+    int num_samples = 400;
     sensors_event_t gyro_event;
     sensors_event_t accel_event;
     sensors_event_t mag_event;  // placeholder
@@ -125,7 +124,7 @@ void calibrateGyroAccel() {
         accel_x_offset += accel_event.acceleration.x;
         accel_y_offset += accel_event.acceleration.y;
         accel_z_offset += accel_event.acceleration.z;
-        delay(10);
+        delay(20);
     }
     gyro_x_offset /= num_samples;
     gyro_y_offset /= num_samples;
@@ -144,8 +143,10 @@ void calibrateGyroAccel() {
 }
 
 void FlightData::serve_csv(WiFiClient& client) {
-    if (file)
+    if (file) {
+        file.flush();
         file.close();
+    }
 
     file = SPIFFS.open("/data.csv", FILE_READ);
     if (!file) {
