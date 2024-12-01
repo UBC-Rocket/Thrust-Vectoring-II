@@ -1,0 +1,7 @@
+import numpy as np
+
+
+
+def calculate_inertia(gravity, mass, string_length, com_to_string):
+    inertia = (4 * np.pi**2 * string_length * mass) / gravity
+    return inertia
