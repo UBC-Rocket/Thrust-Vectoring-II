@@ -1,1 +1,18 @@
+import numpy as np
+
+
+
+class ThrustInput:
+    def __init__(self, thrust, angle_deg):
+        self.thrust = thrust
+        self.angle_rad = np.radians(angle_deg)
+
+    def calculate_forces(self):
+        Fx = self.thrust * np.cos(self.angle_rad)  # Force in x-direction
+        Fz = self.thrust * np.sin(self.angle_rad)  # Force in z-direction
+        return Fx, Fz
+
+    def calculate_moment(self, COM_offset):
+        moment = self.thrust * COM_offset * np.sin(self.angle_rad)
+        return moment
 
