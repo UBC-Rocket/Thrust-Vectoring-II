@@ -1,0 +1,3 @@
+def servo_delay(seconds, fps, reaction_time, work_duration, duration_degree):
+    servo_time_delay = reaction_time / fps
+    return servo_time_delay
