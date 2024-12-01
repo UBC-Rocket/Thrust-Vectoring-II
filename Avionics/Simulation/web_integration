@@ -1,0 +1,301 @@
+from dash import Dash, dcc, html, Input, Output, State
+import numpy as np
+import plotly.graph_objs as go
+from scipy.integrate import solve_ivp
+
+# Initialize the Dash app
+app = Dash(__name__)
+
+# Define global variables for trajectory simulation
+t_span = (0, 10)  # Simulation from t=0 to t=10 seconds
+initial_state = [0, 0, 0, 0, 0, 0]  # [x, z, vx, vz, theta, omega]
+# Global Constants
+g = 9.81  # Gravitational acceleration (m/s^2)
+mass = 10.0  # Rocket mass (kg)
+inertia = 5.0  # Rocket moment of inertia (kg·m^2)
+moment_arm = 0.3  # Distance from thrust vector to center of mass (m)
+
+def rocket_dynamics(t, state, thrust, angle):
+    """
+    Calculate the rocket's dynamics.
+    :param t: Time (s)
+    :param state: [x, z, vx, vz, theta, omega]
+    :param thrust: Thrust force (N)
+    :param angle: Thrust angle (degrees)
+    :return: Derivatives [dx/dt, dz/dt, dvx/dt, dvz/dt, dtheta/dt, domega/dt]
+    """
+    x, z, vx, vz, theta, omega = state
+    g = 9.81  # Gravity (m/s²)
+    mass = 1.0  # Rocket mass (kg)
+
+    # Convert angle to radians
+    angle_rad = np.radians(angle)
+
+    # Decompose thrust into components
+    fx = thrust * np.cos(angle_rad)  # Horizontal force
+    fz = thrust * np.sin(angle_rad)  # Vertical force
+
+    # Equations of motion
+    dxdt = vx
+    dzdt = vz
+    dvxdt = fx / mass  # Acceleration in x
+    dvzdt = (fz - mass * g) / mass  # Acceleration in z (thrust - gravity)
+    dthetadt = omega  # Angular velocity (keeping it 0 for simplicity)
+    domegadt = 0  # Angular acceleration (assumed 0)
+
+    return [dxdt, dzdt, dvxdt, dvzdt, dthetadt, domegadt]
+
+
+
+# App Layout
+app.layout = html.Div([
+    dcc.Tabs(id='tabs', value='trajectory', children=[
+        dcc.Tab(label='Rocket Trajectory', value='trajectory'),
+        dcc.Tab(label='Inertia Calculation', value='inertia'),
+        dcc.Tab(label='Servo Delay Calculation', value='servo_delay'),
+        dcc.Tab(label='PID Control Block', value='pid_control'),
+        dcc.Tab(label='Thrust Input & 3DOF', value='thrust_input'),
+    ]),
+    html.Div(id='tabs-content')
+])
+
+# Layouts for each page
+
+trajectory_layout = html.Div([
+    html.H1("Rocket Trajectory Simulation"),
+    html.Div([
+        html.Label("Thrust (N):"),
+        dcc.Slider(id='thrust-slider', min=0, max=100, step=1, value=50),
+    ]),
+    html.Div([
+        html.Label("Angle (Degrees):"),
+        dcc.Slider(id='angle-slider', min=-45, max=45, step=1, value=0),
+    ]),
+    dcc.Graph(id='trajectory-plot')
+])
+
+inertia_layout = html.Div([
+    html.H1("Inertia Calculation"),
+    html.Div([
+        html.Label("Gravity (m/s²):"),
+        dcc.Input(id='gravity', type='number', value=9.81, step=0.01),
+    ]),
+    html.Div([
+        html.Label("Mass (kg):"),
+        dcc.Input(id='mass', type='number', value=1.0, step=0.01),
+    ]),
+    html.Div([
+        html.Label("Time (1 oscillation in seconds):"),
+        dcc.Input(id='time', type='number', value=1.0, step=0.01),
+    ]),
+    html.Div([
+        html.Label("COM to strings (m):"),
+        dcc.Input(id='com_to_strings', type='number', value=0.1, step=0.01),
+    ]),
+    html.Div([
+        html.Label("String Length (m):"),
+        dcc.Input(id='string_length', type='number', value=1.0, step=0.01),
+    ]),
+    html.Div([
+        html.Label("Constant (4π²):"),
+        dcc.Input(id='constant', type='number', value=39.4784, step=0.01),
+    ]),
+    html.Button("Calculate Inertia", id='calculate-inertia', n_clicks=0),
+    html.Div(id='inertia-output', style={'marginTop': '20px', 'fontSize': '18px'})
+])
+
+servo_delay_layout = html.Div([
+    html.H1("Servo Delay Calculation"),
+    html.Div([
+        html.Label("FPS:"),
+        dcc.Input(id='fps', type='number', value=240, step=1),
+    ]),
+    html.Div([
+        html.Label("Reaction Time (FPS):"),
+        dcc.Input(id='reaction_time', type='number', value=11.2, step=0.1),
+    ]),
+    html.Div([
+        html.Label("Work Duration (FPS):"),
+        dcc.Input(id='work_duration', type='number', value=11.1, step=0.1),
+    ]),
+    html.Div([
+        html.Label("Duration (Degrees):"),
+        dcc.Input(id='duration_degrees', type='number', value=5, step=0.1),
+    ]),
+    html.Button("Calculate Servo Delay", id='calculate-servo-delay', n_clicks=0),
+    html.Div(id='servo-delay-output', style={'marginTop': '20px', 'fontSize': '18px'})
+])
+
+pid_control_layout = html.Div([
+    html.H1("PID Control Visualization"),
+    html.Div([
+        html.Label("Target Setpoint (Degrees):"),
+        dcc.Input(id='target-setpoint', type='number', value=5, step=0.1),
+    ]),
+    html.Div([
+        html.Label("PID Parameters:"),
+        html.Label("Proportional (P):"),
+        dcc.Input(id='pid-p', type='number', value=1.0, step=0.1),
+        html.Label("Integral (I):"),
+        dcc.Input(id='pid-i', type='number', value=0.5, step=0.1),
+        html.Label("Derivative (D):"),
+        dcc.Input(id='pid-d', type='number', value=0.1, step=0.1),
+    ]),
+    html.Div([
+        html.Label("Division Block:"),
+        html.Label("Variable PID:"),
+        dcc.Input(id='variable-pid', type='number', value=1.8, step=0.1),
+        html.Label("Division Factor:"),
+        dcc.Input(id='division-factor', type='number', value=4, step=0.1),
+    ]),
+    html.Button("Simulate", id='simulate-btn', n_clicks=0),
+    dcc.Graph(id='pid-visualization'),
+])
+
+thrust_input_layout = html.Div([
+    html.H1("Thrust Input and 3DOF Simulation"),
+    html.Div([
+        html.Label("Average Thrust (Newtons):"),
+        dcc.Input(id='avg-thrust', type='number', value=9, step=0.1),
+    ]),
+    html.Div([
+        html.Label("Out of Angle (Degrees):"),
+        dcc.Input(id='out-of-angle', type='number', value=0, step=0.1),
+    ]),
+    html.Div([
+        html.Label("Moment Arm TVC to COM (m):"),
+        dcc.Input(id='moment-arm', type='number', value=0.295, step=0.001),
+    ]),
+    html.Button("Calculate Forces", id='calculate-forces', n_clicks=0),
+    html.Div(id='forces-output', style={'marginTop': '20px', 'fontSize': '18px'}),
+    dcc.Graph(id='scope-position'),
+])
+
+# Callback to switch tabs
+@app.callback(
+    Output('tabs-content', 'children'),
+    Input('tabs', 'value')
+)
+def render_tab_content(tab):
+    if tab == 'trajectory':
+        return trajectory_layout
+    elif tab == 'inertia':
+        return inertia_layout
+    elif tab == 'servo_delay':
+        return servo_delay_layout
+    elif tab == 'pid_control':
+        return pid_control_layout
+    elif tab == 'thrust_input':
+        return thrust_input_layout
+
+# Callbacks for Each Block
+@app.callback(
+    Output('trajectory-plot', 'figure'),
+    [Input('thrust-slider', 'value'), Input('angle-slider', 'value')]
+)
+
+def simulate_trajectory(thrust, angle):
+    # Time span and evaluation points
+    t_span = (0, 10)  # Simulate for 10 seconds
+    t_eval = np.linspace(0, 10, 500)  # High resolution for better results
+
+    # Initial conditions: [x, z, vx, vz, theta, omega]
+    initial_state = [0, 0, 0, 0, 0, 0]
+
+    # Solve the dynamics
+    solution = solve_ivp(
+        rocket_dynamics, t_span, initial_state, t_eval=t_eval, args=(thrust, angle)
+    )
+
+    # Extract the trajectory data
+    x, z = solution.y[0], solution.y[1]
+
+    # Clip negative vertical positions (rocket can't go below ground)
+    z = np.clip(z, 0, None)
+
+    # Create the plot
+    fig = go.Figure()
+    fig.add_trace(go.Scatter(x=x, y=z, mode='lines', name='Rocket Trajectory'))
+    fig.update_layout(
+        title="Rocket Trajectory Simulation",
+        xaxis_title="Horizontal Position (m)",
+        yaxis_title="Vertical Position (m)",
+        legend=dict(x=0, y=1),
+        showlegend=True,
+    )
+    return fig
+
+
+@app.callback(
+    Output('inertia-output', 'children'),
+    Input('calculate-inertia', 'n_clicks'),
+    State('gravity', 'value'),
+    State('mass', 'value'),
+    State('time', 'value'),
+    State('com_to_strings', 'value'),
+    State('string_length', 'value'),
+    State('constant', 'value')
+)
+def calculate_inertia(n_clicks, gravity, mass, time, com_to_strings, string_length, constant):
+    if n_clicks > 0:
+        inertia = (gravity * mass * time**2 * com_to_strings**2) / (constant * string_length)
+        return f"Calculated Inertia: {inertia:.5f} kg·m²"
+    return ""
+
+@app.callback(
+    Output('servo-delay-output', 'children'),
+    Input('calculate-servo-delay', 'n_clicks'),
+    State('fps', 'value'),
+    State('reaction_time', 'value'),
+    State('work_duration', 'value'),
+    State('duration_degrees', 'value')
+)
+def calculate_servo_delay(n_clicks, fps, reaction_time, work_duration, duration_degrees):
+    if n_clicks > 0:
+        reaction_time_seconds = reaction_time / fps
+        servo_delay = work_duration / duration_degrees
+        return f"Reaction Time: {reaction_time_seconds:.5f}s, Servo Delay: {servo_delay:.5f}s"
+    return ""
+
+@app.callback(
+    Output('pid-visualization', 'figure'),
+    Input('simulate-btn', 'n_clicks'),
+    State('target-setpoint', 'value'),
+    State('pid-p', 'value'),
+    State('pid-i', 'value'),
+    State('pid-d', 'value'),
+    State('variable-pid', 'value'),
+    State('division-factor', 'value')
+)
+def simulate_pid(n_clicks, target_setpoint, p, i, d, variable_pid, division_factor):
+    if n_clicks > 0:
+        time = np.linspace(0, 10, 100)
+        orientation = target_setpoint * np.sin(2 * np.pi * time)
+        pid_output = (p + i * np.cumsum(orientation) + d * np.gradient(orientation)) * variable_pid / division_factor
+        fig = go.Figure()
+        fig.add_trace(go.Scatter(x=time, y=orientation, name="Orientation"))
+        fig.add_trace(go.Scatter(x=time, y=pid_output, name="PID Output"))
+        return fig
+    return go.Figure()
+
+@app.callback(
+    [Output('forces-output', 'children'), Output('scope-position', 'figure')],
+    Input('calculate-forces', 'n_clicks'),
+    State('avg-thrust', 'value'),
+    State('out-of-angle', 'value'),
+    State('moment-arm', 'value')
+)
+def thrust_calculations(n_clicks, avg_thrust, out_of_angle, moment_arm):
+    if n_clicks > 0:
+        angle_rad = np.radians(out_of_angle)
+        fx = avg_thrust * np.sin(angle_rad)
+        fz = avg_thrust * np.cos(angle_rad)
+        moment = fx * moment_arm
+        fig = go.Figure()
+        fig.add_trace(go.Scatter(x=[0, fx], y=[0, fz], name="Force"))
+        return f"Fx: {fx:.2f} N, Fz: {fz:.2f} N, Moment: {moment:.2f} Nm", fig
+    return "", go.Figure()
+
+# Run the app
+if __name__ == '__main__':
+    app.run_server(debug=True)
