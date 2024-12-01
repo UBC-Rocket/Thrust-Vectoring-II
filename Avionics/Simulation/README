@@ -75,6 +75,5 @@ This block provides graphical outputs of various results from the simulation.
 ### **Outputs:**
 1. **Inertia of the Rocket (kg·m²):** The calculated inertia based on the inputs provided.
 
----
 
 
