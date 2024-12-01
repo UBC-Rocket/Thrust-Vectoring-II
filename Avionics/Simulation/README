@@ -1,69 +1,84 @@
+# Rocket Simulation System: Functional Overview
 
+This document provides an overview of the functional blocks in the rocket simulation system. Each block is described with its inputs and outputs to understand its role in the simulation.
 
+---
 
+## Block 1: **Thrust Input Block**
+### **Inputs:**
+1. **Avg Thrust (Newtons):** Average thrust force applied by the rocket engine.
+2. **Out of Angle (Degrees):** Angle deviation for thrust. This is converted to radians using D2R (Degrees to Radians).
+3. **Moment Arm TVC to COM:** Distance from the thrust vector control (TVC) to the center of mass (COM).
 
+### **Outputs:**
+1. **Fx (N):** Force along the x-axis.
+2. **Fz (N):** Force along the z-axis.
+3. **M (N-m):** Moment generated about the center of mass.
 
-Block 1 : Thrust input Block
-Inputs:
-Avg Thrust (Newtons): Average thrust force.
-Out of Angle (Degrees): Angle deviation for thrust (converted to radians using D2R).
-Moment Arm TVC to COM: Distance from the thrust vector control (TVC) to the center of mass (COM).
-Outputs:
-Fx (N): Force along the x-axis.
-Fz (N): Force along the z-axis.
-M (N-m): Moment generated about the center of mass.
+---
 
+## Block 2: **3DOF Block**
+### **Calculations:**
+1. **Position:** Horizontal (Xe) and vertical (Ze) positions of the rocket.
+2. **Velocity:** U (horizontal velocity) and W (vertical velocity).
+3. **Angular Dynamics:** Angular velocity (ω) and angular acceleration (dω/dt).
+4. **Forces and Moment:** Uses the outputs from the Thrust Input Block (Fx, Fz, M).
 
+---
 
+## Block 3: **Scopes Block**
+### **Visualizations:**
+This block provides graphical outputs of various results from the simulation.
+1. **Position (Xe, Ze) vs. Time:** Tracks the rocket's position over time.
+2. **Velocity (U, W) vs. Time:** Shows how the rocket's velocity changes over time.
+3. **Angular Velocity and Acceleration:** Visualizes angular dynamics.
 
+### **Inputs:**
+- Outputs from the Thrust Input and 3DOF Blocks (e.g., position, forces, and angular data).
 
-Block 2 : 
+---
 
-3DOF Block
-This block calculates:
-Position (Xe, Ze).
-Velocity (U, W).
-Angular velocity (ω) and acceleration (dω/dt).
-Forces (Fx, Fz) and Moment (M) received from the Thrust Input Block.
+## Block 4: **PID Input, Target Setpoint, and Control Visualization**
+### **Inputs:**
+1. **PID Control Parameters:** Proportional (P), Integral (I), and Derivative (D) gains.
+2. **Target Setpoint:** Desired value for the rocket's orientation or trajectory.
+3. **Division Block Values:** Adjustable PID variable and division factor.
+4. **Servo-Related Configurations:** Reaction time, delay, and servo limit.
 
-Block 3: Scopes Block
-This block visualizes the results:
-Inputs: Outputs from the Thrust Input and 3DOF Blocks (e.g., position, forces, and angular data).
-Outputs: Visualizations like graphs for:
-Position (Xe, Ze) vs. Time.
-Velocity (U, W) vs. Time.
-Angular velocity and acceleration.
+### **Outputs:**
+1. **Target Setpoint Visualization:** The expected trajectory or behavior.
+2. **Orientation vs. PID Output Graph:** Dynamic plot showing how the rocket orientation and PID output respond to changes in the target setpoint.
+3. **Division Block:** Allows tuning the PID controller by adjusting the division factor.
 
-	
+---
 
+## Block 5: **Servo Delay Calculation**
+### **Inputs:**
+1. **Constant 1 Second:** A fixed value for time.
+2. **FPS:** Frames per second of the servo system.
+3. **Reaction Time (fps):** Frames taken for a reaction.
+4. **Work Duration (fps):** Duration of work in frames.
+5. **Duration (Degrees):** Angular duration.
 
+### **Outputs:**
+1. **Reaction Time (s):** Time taken for the servo system to react.
+2. **Servo Time Delay (s/degree):** Delay per degree of movement.
+3. **Servo Delay (From the Input):** Total servo delay based on the input parameters.
 
+---
 
+## Block 6: **Inertia Calculation**
+### **Inputs:**
+1. **Gravity (m/s²):** Acceleration due to gravity.
+2. **Mass (kg):** Mass of the rocket.
+3. **Time (1 oscillation):** Time taken for one oscillation.
+4. **COM to Strings (m):** Distance from the center of mass (COM) to the suspension strings.
+5. **String Length (m):** Length of the suspension strings.
+6. **Constant (4π²):** Fixed value for the calculation.
 
+### **Outputs:**
+1. **Inertia of the Rocket (kg·m²):** The calculated inertia based on the inputs provided.
 
-
-Block 4: PID input , Target Setpoint and etc:
-Inputs: Parameters for PID control, target setpoint, division block values, and servo-related configurations.
-Outputs: Visualizing the Target Setpoint, Orientation, and PID Output on a graph.
-Division Block: A section where the user can adjust the PID variable and division factor.
-Main Visualization: A dynamic plot showing the relationship between the Target Setpoint, Orientation, and PID Output.
-
-Block 5: Servo delay calculation inputs : 
-Constant 1 Second -Don’t change
-Fps
-Reaction Time (fps)
-Work duration (fps)
-duration(seconds)
-			Outputs :
-Reaction Time (s)
-Servo Time delay(sec/degree)
-Servo Delay(From the input)
-Block 6: Inertia Calculation: By inputting the inputs:  
-Gravity
-Mass (kg)
-Time (1 oscillation)
-COM to strings(m)
-String Length(m)
-Constant (4pi^2)
+---
 
 
