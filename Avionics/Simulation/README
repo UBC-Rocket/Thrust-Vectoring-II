@@ -1,8 +1,4 @@
-# Rocket Simulation System: Functional Overview
 
-This document provides an overview of the functional blocks in the rocket simulation system. Each block is described with its inputs and outputs to understand its role in the simulation.
-
----
 
 ## Block 1: **Thrust Input Block**
 ### **Inputs:**
