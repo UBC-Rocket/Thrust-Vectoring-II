@@ -1,1 +1,69 @@
 
+
+
+
+
+Block 1 : Thrust input Block
+Inputs:
+Avg Thrust (Newtons): Average thrust force.
+Out of Angle (Degrees): Angle deviation for thrust (converted to radians using D2R).
+Moment Arm TVC to COM: Distance from the thrust vector control (TVC) to the center of mass (COM).
+Outputs:
+Fx (N): Force along the x-axis.
+Fz (N): Force along the z-axis.
+M (N-m): Moment generated about the center of mass.
+
+
+
+
+
+Block 2 : 
+
+3DOF Block
+This block calculates:
+Position (Xe, Ze).
+Velocity (U, W).
+Angular velocity (ω) and acceleration (dω/dt).
+Forces (Fx, Fz) and Moment (M) received from the Thrust Input Block.
+
+Block 3: Scopes Block
+This block visualizes the results:
+Inputs: Outputs from the Thrust Input and 3DOF Blocks (e.g., position, forces, and angular data).
+Outputs: Visualizations like graphs for:
+Position (Xe, Ze) vs. Time.
+Velocity (U, W) vs. Time.
+Angular velocity and acceleration.
+
+	
+
+
+
+
+
+
+
+Block 4: PID input , Target Setpoint and etc:
+Inputs: Parameters for PID control, target setpoint, division block values, and servo-related configurations.
+Outputs: Visualizing the Target Setpoint, Orientation, and PID Output on a graph.
+Division Block: A section where the user can adjust the PID variable and division factor.
+Main Visualization: A dynamic plot showing the relationship between the Target Setpoint, Orientation, and PID Output.
+
+Block 5: Servo delay calculation inputs : 
+Constant 1 Second -Don’t change
+Fps
+Reaction Time (fps)
+Work duration (fps)
+duration(seconds)
+			Outputs :
+Reaction Time (s)
+Servo Time delay(sec/degree)
+Servo Delay(From the input)
+Block 6: Inertia Calculation: By inputting the inputs:  
+Gravity
+Mass (kg)
+Time (1 oscillation)
+COM to strings(m)
+String Length(m)
+Constant (4pi^2)
+
+
