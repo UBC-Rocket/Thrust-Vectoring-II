@@ -43,15 +43,20 @@ float FlightData::getTemp() const {
 */
 void FlightData::update_values() {
   time = millis() - startTime;
+
   sensors_event_t accel, gyro, mag, temp;
   imu.getEvent(&accel, &gyro, &mag, &temp);
+
   accel.acceleration.x -= accel_x_offset;
   accel.acceleration.y -= accel_y_offset;
   accel.acceleration.z -= accel_z_offset;
+
   this->acceleration = accel.acceleration;
+
   gyro.gyro.x -= gyro_x_offset;
   gyro.gyro.y -= gyro_y_offset;
   gyro.gyro.z -= gyro_z_offset;
+  
   this->gyroscope = gyro.gyro;
   this->magnetic = mag.magnetic;
   this->temperature = temp.temperature;
