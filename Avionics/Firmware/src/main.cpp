@@ -7,41 +7,15 @@
 
 #include "main.h"
 #include "flightdata.h"
+
 #include "Wifi_Control.h"
 #include "IMU_Control.h"
+#include "PID_Control.h"
 
 const bool WAIT_FOR_EMATCH = false; // set to true if this is a real launch/test - 
                                     // this will prevent data logging and servo movement until the ematch is lit
-
 bool done = false; // Is flight finished
 bool started = false; // Is flight started
-
-
-
-
-
-
-
-/////////////////////////////////////////////////////////////////////////////////////
-// Servo, PID Controller Constants and Variables for X and Y Axes
-Servo gimbal_x;
-Servo gimbal_y;
-const int servoxinit = 60, servoyinit = 70; // Servo initial positions
-const double Kp = 1, Ki = 0, Kd = 0;
-double setpointX = 0.0, inputX, outputX; // X-axis PID variables
-double setpointY = 0.0, inputY, outputY; // Y-axis PID variables
-
-// Initialize PID controllers for X and Y axes
-PID pidX(&inputX, &outputX, &setpointX, Kp, Ki, Kd, DIRECT);
-PID pidY(&inputY, &outputY, &setpointY, Kp, Ki, Kd, DIRECT);
-
-
-
-
-
-
-
-
 
 // PMOS and NMOS pins for remote ignition control
 const int PMOS_PIN = 26;
@@ -58,26 +32,7 @@ void setup() {
   startWifiServer();
   
   initIMU();
-
-////////////////////////////////////////////////////////////////////////////////////
-  // Attach servos to GPIO pins with appropriate PWM parameters
-  gimbal_x.attach(16, 1000, 2000);
-  gimbal_y.attach(17, 1000, 2000);
-
-  // Initialize PID controllers and set output limits for stabilization
-  pidX.SetMode(AUTOMATIC);
-  pidY.SetMode(AUTOMATIC);
-  pidX.SetOutputLimits(-20, 20);
-  pidY.SetOutputLimits(-20, 20);
-
-
-
-
-
-
-
-
-
+  PID_Config();
 
   if (!SPIFFS.begin(true)) {
       Serial.println("Failed to mount file system");
@@ -101,22 +56,7 @@ void setup() {
 
 void loop() {
   if ((WAIT_FOR_EMATCH && started && !done) || (!WAIT_FOR_EMATCH && !done)) {
-    currentData.update_values();
-    // currentData.print_values();
-    currentData.save_values();
-
-    // Update PID input values with current IMU data
-    inputX = currentData.getGyro().x; // X-axis (pitch) stabilization
-    if (abs(inputX) > 0.01) {
-      pidX.Compute();   // Compute PID output for X-axis
-      gimbal_x.write(servoxinit + outputX * SERVO_MULTIPLIER); // Adjust gimbal X servo
-    }
-
-    inputY = currentData.getGyro().y; // Y-axis (roll) stabilization
-    if (abs(inputY) > 0.01) {
-      pidY.Compute();   // Compute PID output for Y-axis
-      gimbal_y.write(servoyinit + outputY * SERVO_MULTIPLIER); // Adjust gimbal Y servo
-    }
+    PID_Loop();
   }
 
   // ======== Remote Ignition Control & Remote CSV Download (Wi-Fi Command Listening) ======== //
