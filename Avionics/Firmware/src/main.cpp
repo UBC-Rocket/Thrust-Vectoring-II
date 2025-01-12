@@ -8,16 +8,21 @@
 #include "main.h"
 #include "flightdata.h"
 #include "Wifi_Control.h"
+#include "IMU_Control.h"
 
 const bool WAIT_FOR_EMATCH = false; // set to true if this is a real launch/test - 
                                     // this will prevent data logging and servo movement until the ematch is lit
 
-// IMU
-Adafruit_ICM20948 imu;
-
 bool done = false; // Is flight finished
 bool started = false; // Is flight started
 
+
+
+
+
+
+
+/////////////////////////////////////////////////////////////////////////////////////
 // Servo, PID Controller Constants and Variables for X and Y Axes
 Servo gimbal_x;
 Servo gimbal_y;
@@ -29,6 +34,14 @@ double setpointY = 0.0, inputY, outputY; // Y-axis PID variables
 // Initialize PID controllers for X and Y axes
 PID pidX(&inputX, &outputX, &setpointX, Kp, Ki, Kd, DIRECT);
 PID pidY(&inputY, &outputY, &setpointY, Kp, Ki, Kd, DIRECT);
+
+
+
+
+
+
+
+
 
 // PMOS and NMOS pins for remote ignition control
 const int PMOS_PIN = 26;
@@ -44,15 +57,9 @@ void setup() {
   initWifiAccessPoint();
   startWifiServer();
   
-  // Initialize IMU
-  if (!imu.begin_I2C(ICM_ADDR, &Wire)) {
-    Serial.println("Failed to find imu20948 chip");
-    while (true) {
-      delay(10);
-    }
-  }
-  Serial.println("imu20948 found");
+  initIMU();
 
+////////////////////////////////////////////////////////////////////////////////////
   // Attach servos to GPIO pins with appropriate PWM parameters
   gimbal_x.attach(16, 1000, 2000);
   gimbal_y.attach(17, 1000, 2000);
@@ -63,33 +70,22 @@ void setup() {
   pidX.SetOutputLimits(-20, 20);
   pidY.SetOutputLimits(-20, 20);
 
+
+
+
+
+
+
+
+
+
   if (!SPIFFS.begin(true)) {
       Serial.println("Failed to mount file system");
       return;
   }
   Serial.println("Mounted file system");
 
-  setLowNoiseMode();
-
-  /* If rotation in any direction exceeds 250 degrees per second,
-  *  then this value will have to be changed. 
-  *  However, the lower the value is the more precise the measurement is. */ 
-  imu.setGyroRange(ICM20948_GYRO_RANGE_250_DPS);
-
-  /* This rocket will be moving very slowly, 
-  *  and acceleration will be far below the minimum range of double Earth's gravity.
-  *  This means the highest precision is achieved. */ 
-  imu.setAccelRange(ICM20948_ACCEL_RANGE_2_G);
-
-  // Set magnetometer to update 100 times per second
-  imu.setMagDataRate(AK09916_MAG_DATARATE_100_HZ);
-
-  // Set gyro and accel data rate divisors
-  imu.setGyroRateDivisor(9); // Gyroscope base output data rate is 9kHz
-  imu.setAccelRateDivisor(10);
-
-  Serial.println("Keep IMU still. Calibrating gyroscope and accelerometer...");
-  calibrateGyroAccel();
+  configIMU();
 
   // Initialize PMOS and NMOS pins as outputs for ignition control
   pinMode(PMOS_PIN, OUTPUT);
@@ -108,7 +104,7 @@ void loop() {
     currentData.update_values();
     // currentData.print_values();
     currentData.save_values();
-  
+
     // Update PID input values with current IMU data
     inputX = currentData.getGyro().x; // X-axis (pitch) stabilization
     if (abs(inputX) > 0.01) {
@@ -142,10 +138,4 @@ void beginFlight() {
   // Serial.println(pmosState);
   // Serial.print("NMOS: ");
   // Serial.println(nmosState);
-}
-
-// Set low noise modes for both gyroscope and accelerometer
-void setLowNoiseMode() {
-  imu.writeExternalRegister(ICM_ADDR, GYRO_CONFIG_1, 0x01);
-  imu.writeExternalRegister(ICM_ADDR, ACCEL_CONFIG, 0x01);
 }
