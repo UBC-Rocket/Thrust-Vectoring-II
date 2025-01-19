@@ -39,7 +39,6 @@ extern FlightData currentData;
 extern unsigned long startTime;
 
 void initialize_csv();
-void calibrateGyroAccel();
 void printVector(const char* label, sensors_vec_t vec);
 
 #endif // FLIGHTDATA_H
