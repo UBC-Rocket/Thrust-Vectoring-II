@@ -1,6 +1,8 @@
 #include "flightdata.h"
 #include "main.h"
 
+extern Adafruit_ICM20948 imu;
+
 // Objects
 File file;
 float gyro_x_offset = 0;
