@@ -5,7 +5,7 @@
 Servo gimbal_x;
 Servo gimbal_y;
 const int servoxinit = 60, servoyinit = 70; // Servo initial positions
-const double Kp = 1, Ki = 0, Kd = 0;
+const double Kp = 1, Ki = 2, Kd = 0;
 double setpointX = 0.0, inputX, outputX; // X-axis PID variables
 double setpointY = 0.0, inputY, outputY; // Y-axis PID variables
 
@@ -13,7 +13,7 @@ double setpointY = 0.0, inputY, outputY; // Y-axis PID variables
 PID pidX(&inputX, &outputX, &setpointX, Kp, Ki, Kd, DIRECT);
 PID pidY(&inputY, &outputY, &setpointY, Kp, Ki, Kd, DIRECT);
 
-void PID_config(){
+void PID_Config(){
   // Attach servos to GPIO pins with appropriate PWM parameters
   gimbal_x.attach(16, 1000, 2000);
   gimbal_y.attach(17, 1000, 2000);
@@ -27,7 +27,7 @@ void PID_config(){
 
 void PID_Loop(){
     currentData.update_values();
-    // currentData.print_values();
+    currentData.print_values();
     currentData.save_values();
 
     // Update PID input values with current IMU data

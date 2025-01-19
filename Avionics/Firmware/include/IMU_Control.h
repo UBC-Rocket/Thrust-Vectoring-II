@@ -10,8 +10,16 @@
 //Initialize IMU (ICM20948)
 extern Adafruit_ICM20948 imu;
 
+extern float gyro_x_offset;
+extern float gyro_y_offset;
+extern float gyro_z_offset;
+extern float accel_x_offset;
+extern float accel_y_offset;
+extern float accel_z_offset;
+
 void initIMU();
 void configIMU();
+void calibrateGyroAccel();
 
 // Set low noise modes for both gyroscope and accelerometer
 void setLowNoiseMode();

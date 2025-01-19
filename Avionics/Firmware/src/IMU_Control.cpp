@@ -1,7 +1,12 @@
 #include "IMU_Control.h"
-#include "flightdata.h"
 
 Adafruit_ICM20948 imu;
+float gyro_x_offset = 0;
+float gyro_y_offset = 0;
+float gyro_z_offset = 0;
+float accel_x_offset = 0;
+float accel_y_offset = 0;
+float accel_z_offset = 0;
 
 void initIMU(){
     if (!imu.begin_I2C(ICM_ADDR, &Wire)) {
@@ -35,6 +40,39 @@ void configIMU(){
 
   Serial.println("Keep IMU still. Calibrating gyroscope and accelerometer...");
   calibrateGyroAccel();
+}
+
+void calibrateGyroAccel() {
+    int num_samples = 400;
+    sensors_event_t gyro_event;
+    sensors_event_t accel_event;
+    sensors_event_t mag_event;  // placeholder
+    sensors_event_t temp_event; // placeholder
+    
+    for (int i = 0; i < num_samples; i++) {
+        imu.getEvent(&accel_event, &gyro_event, &mag_event, &temp_event);
+        gyro_x_offset += gyro_event.gyro.x;
+        gyro_y_offset += gyro_event.gyro.y;
+        gyro_z_offset += gyro_event.gyro.z;
+        accel_x_offset += accel_event.acceleration.x;
+        accel_y_offset += accel_event.acceleration.y;
+        accel_z_offset += accel_event.acceleration.z;
+        delay(20);
+    }
+    gyro_x_offset /= num_samples;
+    gyro_y_offset /= num_samples;
+    gyro_z_offset /= num_samples;
+    accel_x_offset /= num_samples;
+    accel_y_offset /= num_samples;
+    accel_z_offset /= num_samples;
+
+    Serial.print("\nGyro offsets - X: "); Serial.print(gyro_x_offset);
+    Serial.print(", Y: "); Serial.print(gyro_y_offset);
+    Serial.print(", Z: "); Serial.println(gyro_z_offset);
+
+    Serial.print("\nAccel offsets - X: "); Serial.print(accel_x_offset);
+    Serial.print(", Y: "); Serial.print(accel_y_offset);
+    Serial.print(", Z: "); Serial.println(accel_z_offset);
 }
 
 void setLowNoiseMode(){

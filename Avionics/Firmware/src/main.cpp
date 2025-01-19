@@ -6,11 +6,11 @@
 */
 
 #include "main.h"
-#include "flightdata.h"
 
 #include "Wifi_Control.h"
 #include "IMU_Control.h"
 #include "PID_Control.h"
+#include "flightdata.h"
 
 const bool WAIT_FOR_EMATCH = false; // set to true if this is a real launch/test - 
                                     // this will prevent data logging and servo movement until the ematch is lit
@@ -34,9 +34,23 @@ void setup() {
   initIMU();
   PID_Config();
 
-  if (!SPIFFS.begin(true)) {
-      Serial.println("Failed to mount file system");
-      return;
+  
+  if (!SPIFFS.begin()) {
+    Serial.println("Failed to mount SPIFFS. Formatting...");
+    
+    // Format SPIFFS
+    if (SPIFFS.format()) {
+      Serial.println("SPIFFS formatted successfully.");
+    } else {
+      Serial.println("Failed to format SPIFFS. Check partition configuration.");
+      return; // Exit setup if formatting fails
+    }
+    
+    // Attempt to mount SPIFFS again after formatting
+    if (!SPIFFS.begin()) {
+      Serial.println("Failed to mount SPIFFS after formatting.");
+      return; // Exit setup if mounting still fails
+    }
   }
   Serial.println("Mounted file system");
 

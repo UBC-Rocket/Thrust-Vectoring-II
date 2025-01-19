@@ -1,5 +1,5 @@
-#ifndef WIFI_CONTROL.H
-#define WIFI_CONTROL.H
+#ifndef WIFI_CONTROL_H
+#define WIFI_CONTROL_H
 
 #include<WiFi.h>
 
