@@ -77,10 +77,13 @@ void loop() {
   remoteControl(beginFlight);
 
   yield();
+  delay(10);
 }
 
 // Flip PMOS and NMOS states for ignition control, begin gimbal control and data logging
 void beginFlight() {
+
+  Serial.println("CONNECTED");
   started = true;
   pmosState = !pmosState;  // Toggle PMOS state
   nmosState = !nmosState;  // Toggle NMOS state
