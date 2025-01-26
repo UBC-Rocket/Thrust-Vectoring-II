@@ -7,6 +7,8 @@
 #define GYRO_CONFIG_1 0x01
 #define ACCEL_CONFIG 0x14
 
+#define TIMEOUT_MS 3000
+
 //Initialize IMU (ICM20948)
 extern Adafruit_ICM20948 imu;
 
@@ -20,6 +22,9 @@ extern float accel_z_offset;
 void initIMU();
 void configIMU();
 void calibrateGyroAccel();
+
+bool getImuDataWithTimeout(sensors_event_t *accel, sensors_event_t *gyro, sensors_event_t *mag, sensors_event_t *temp);
+void resetI2CBus();
 
 // Set low noise modes for both gyroscope and accelerometer
 void setLowNoiseMode();

@@ -43,7 +43,7 @@ void FlightData::update_values() {
   time = millis() - startTime;
 
   sensors_event_t accel, gyro, mag, temp;
-  imu.getEvent(&accel, &gyro, &mag, &temp);
+  getImuDataWithTimeout(&accel, &gyro, &mag, &temp); //With watchdog timer
 
   accel.acceleration.x -= accel_x_offset;
   accel.acceleration.y -= accel_y_offset;
