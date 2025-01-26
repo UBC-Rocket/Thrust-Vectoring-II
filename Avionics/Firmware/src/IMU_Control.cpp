@@ -79,24 +79,3 @@ void setLowNoiseMode(){
   imu.writeExternalRegister(ICM_ADDR, GYRO_CONFIG_1, 0x01);
   imu.writeExternalRegister(ICM_ADDR, ACCEL_CONFIG, 0x01);
 }
-
-void resetI2CBus() {
-  Wire.end();
-  Wire.begin();
-  Serial.println("I2C bus reset");
-}
-
-bool getImuDataWithTimeout(sensors_event_t *accel, sensors_event_t *gyro, sensors_event_t *mag, sensors_event_t *temp){
-  uint32_t _startTime = millis();
-
-  while (!imu.getEvent(accel, gyro, mag, temp)) {
-    if (millis() - _startTime > TIMEOUT_MS) {
-      Serial.println("Sensor data read timeout!");
-      resetI2CBus();
-      return false;
-    }
-    delay(10);  // Small delay to avoid blocking the loop too tightly
-  }
-
-  return true;
-}
