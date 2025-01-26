@@ -24,7 +24,8 @@ bool pmosState = true;
 bool nmosState = false;
 
 void setup() {
-  Wire.begin(21, 22); // SDA on GPIO 21, SCL on GPIO 22   
+  Wire.begin(21, 22); // SDA on GPIO 21, SCL on GPIO 22 
+
   Serial.begin(115200);
   while(!Serial) {}
 
@@ -77,7 +78,7 @@ void loop() {
   remoteControl(beginFlight);
 
   yield();
-}
+;}
 
 // Flip PMOS and NMOS states for ignition control, begin gimbal control and data logging
 void beginFlight() {
