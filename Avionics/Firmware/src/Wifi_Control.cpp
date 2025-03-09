@@ -1,5 +1,6 @@
 // Wifi_Control.cpp
 #include "Wifi_Control.h"
+#include "flightdata.h"
 
 const char *ssid = "TVR_SECURE";
 const char *password = "UBCRocket_TVR_2024!";
@@ -300,20 +301,75 @@ void remoteControl(void (*beginFlight)()) {
     if (client) {
         Serial.println("\n\n!!! CLIENT CONNECTED !!!");
         
-        // Authenticate client
-        Serial.println("Starting authentication...");
-        if (!authenticateClient(client)) {
-            Serial.println("Authentication failed, disconnecting client");
-            client.stop();
-            return;
-        }
+        // Wait a bit for data to arrive
+        delay(100);
         
-        Serial.println("Client authenticated successfully");
-        CommandAck ack;
-        
-        while (client.connected()) {
-            if (client.available()) {
-                Serial.println("Data available from client");
+        // Check if there's data available
+        if (client.available()) {
+            // Peek at the first byte to check if it's an HTTP request
+            int firstByte = client.peek();
+            
+            // 'G' (71) for GET, 'P' (80) for POST, 'H' (72) for HEAD
+            if (firstByte == 'G' || firstByte == 'P' || firstByte == 'H') {
+                Serial.println("HTTP request detected");
+                
+                String currentLine = "";  // Buffer for incoming HTTP request line
+                String request = "";      // Complete HTTP request
+                
+                while (client.connected()) {
+                    if (client.available()) {
+                        char c = client.read();
+                        request += c;
+                        
+                        // Process HTTP request character by character
+                        if (c == '\n') {
+                            if (currentLine.length() == 0) {
+                                // End of HTTP headers, process the request
+                                Serial.println("Processing HTTP request");
+                                
+                                if (request.indexOf("GET /download") >= 0) {
+                                    Serial.println("CSV download requested");
+                                    done = true;
+                                    
+                                    // Call serve_csv which handles the HTTP response internally
+                                    currentData.serve_csv(client);
+                                    
+                                    Serial.println("CSV data served successfully");
+                                    break;
+                                } else {
+                                    // Send 404 response for any other HTTP request
+                                    client.println("HTTP/1.1 404 Not Found");
+                                    client.println("Content-Type: text/plain");
+                                    client.println("Connection: close");
+                                    client.println();
+                                    client.println("File not found");
+                                    
+                                    Serial.println("404 response sent");
+                                    break;
+                                }
+                            } else {
+                                // Reset current line for the next line in HTTP request
+                                currentLine = "";
+                            }
+                        } else if (c != '\r') {
+                            currentLine += c;
+                        }
+                    }
+                }
+            } else {
+                // Not an HTTP request - handle as encrypted command
+                Serial.println("Processing encrypted command");
+                
+                // Authenticate client for secure commands
+                Serial.println("Starting authentication...");
+                if (!authenticateClient(client)) {
+                    Serial.println("Authentication failed, disconnecting client");
+                    client.stop();
+                    return;
+                }
+                
+                Serial.println("Client authenticated successfully");
+                CommandAck ack;
                 
                 // Read encrypted data
                 uint8_t encryptedData[1024];
@@ -322,7 +378,7 @@ void remoteControl(void (*beginFlight)()) {
                 Serial.print(dataLen);
                 Serial.println(" bytes of encrypted data");
                 
-                // Decrypt data
+                // Decrypt data using your security implementation
                 uint8_t decryptedData[1024];
                 size_t decryptedLen;
                 
@@ -330,7 +386,8 @@ void remoteControl(void (*beginFlight)()) {
                     Serial.println("Decryption failed");
                     ack = {false, millis(), WifiStatus::ENCRYPTION_ERROR, "Decryption failed"};
                     sendAcknowledgment(client, ack);
-                    continue;
+                    client.stop();
+                    return;
                 }
                 
                 Serial.print("Decrypted data: ");
@@ -339,7 +396,7 @@ void remoteControl(void (*beginFlight)()) {
                 }
                 Serial.println();
                 
-                // Process command
+                // Process command ('A' for flight initiation)
                 if (decryptedLen > 0 && decryptedData[0] == 'A') {
                     Serial.println("Valid 'A' command received, initiating flight");
                     beginFlight();
@@ -353,17 +410,21 @@ void remoteControl(void (*beginFlight)()) {
                     ack = {false, millis(), WifiStatus::INVALID_COMMAND, "Invalid command"};
                 }
                 
+                // Send encrypted acknowledgment
                 Serial.println("Sending acknowledgment...");
                 sendAcknowledgment(client, ack);
                 Serial.println("Acknowledgment sent");
+                
+                // Clear any remaining data in the buffer
+                while (client.available()) {
+                    client.read();
+                }
             }
-            
-            // Check connection health
-            if (!client.connected()) {
-                Serial.println("Client disconnected unexpectedly");
-                handleError(WifiStatus::CONNECTION_LOST);
-                break;
-            }
+        } else {
+            // No data available
+            Serial.println("No data received from client");
+            client.stop();
+            return;
         }
         
         client.stop();

@@ -1,3 +1,4 @@
+// flightdata.cpp
 #include "flightdata.h"
 #include "main.h"
 #include "IMU_Control.h"
@@ -91,10 +92,22 @@ void FlightData::save_values() {
 void initialize_csv() {
   file = SPIFFS.open("/data.csv", FILE_WRITE);
   if (!file) {
-      Serial.println("Failed to open file for writing");
-      return;
+      Serial.println("Failed to open file for initializing. Formatting...");
+      SPIFFS.format();
+      if (!SPIFFS.begin()) {
+        Serial.println("Failed to mount SPIFFS during formatting.");
+        return;
+      }
+      
+      // Try to open the file again after formatting
+      file = SPIFFS.open("/data.csv", FILE_WRITE);
+      if (!file) {
+        Serial.println("Failed to open file for initializing. Terminating...");
+        return;
+      }
   }
-  Serial.println("Opened file for writing");
+  
+  Serial.println("Opened file for initializing");
 
   file.print("Time (ms)"); file.print(",");
   file.print("Accel x (+/- 0.1 m/s^2)"); file.print(",");
@@ -110,6 +123,7 @@ void initialize_csv() {
 
   file.close();
   file = SPIFFS.open("/data.csv", FILE_APPEND);
+  Serial.println("Opened file for writing");
 }
 
 void FlightData::serve_csv(WiFiClient& client) {
