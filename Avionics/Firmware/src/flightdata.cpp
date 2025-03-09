@@ -1,3 +1,4 @@
+// flightdata.cpp
 #include "flightdata.h"
 #include "main.h"
 #include "IMU_Control.h"
@@ -61,24 +62,24 @@ void FlightData::update_values() {
 }
 
 void FlightData::print_values() {
-  Serial.println("\nTime: "); Serial.print(time);
-  printVector(" - Accelerometer: ", acceleration);
-  printVector("Gyroscope: ", gyroscope);  
-  printVector("Magnetometer: ", magnetic);
-  Serial.print("Temperature: "); Serial.print(temperature, 2);
+  // Serial.println("\nTime: "); Serial.print(time);
+  // printVector(" - Accelerometer: ", acceleration);
+  // printVector("Gyroscope: ", gyroscope);  
+  // printVector("Magnetometer: ", magnetic);
+  // Serial.print("Temperature: "); Serial.print(temperature, 2);
 }
 
 void printVector(const char* label, sensors_vec_t vec) {
-  Serial.print(label);
-  Serial.print("x = "); Serial.print(vec.x, 2);
-  Serial.print(", y = "); Serial.print(vec.y, 2);
-  Serial.print(", z = "); Serial.print(vec.z, 2);
-  Serial.println("\n");
+  // Serial.print(label);
+  // Serial.print("x = "); Serial.print(vec.x, 2);
+  // Serial.print(", y = "); Serial.print(vec.y, 2);
+  // Serial.print(", z = "); Serial.print(vec.z, 2);
+  // Serial.println("\n");
 }
 
 void FlightData::save_values() {
   if (!file) {
-    Serial.println("File is not open, can't save data");
+    // Serial.println("File is not open, can't save data");
     return;
   }
 
@@ -91,10 +92,22 @@ void FlightData::save_values() {
 void initialize_csv() {
   file = SPIFFS.open("/data.csv", FILE_WRITE);
   if (!file) {
-      Serial.println("Failed to open file for writing");
-      return;
+      Serial.println("Failed to open file for initializing. Formatting...");
+      SPIFFS.format();
+      if (!SPIFFS.begin()) {
+        Serial.println("Failed to mount SPIFFS during formatting.");
+        return;
+      }
+      
+      // Try to open the file again after formatting
+      file = SPIFFS.open("/data.csv", FILE_WRITE);
+      if (!file) {
+        Serial.println("Failed to open file for initializing. Terminating...");
+        return;
+      }
   }
-  Serial.println("Opened file for writing");
+  
+  Serial.println("Opened file for initializing");
 
   file.print("Time (ms)"); file.print(",");
   file.print("Accel x (+/- 0.1 m/s^2)"); file.print(",");
@@ -110,6 +123,7 @@ void initialize_csv() {
 
   file.close();
   file = SPIFFS.open("/data.csv", FILE_APPEND);
+  Serial.println("Opened file for writing");
 }
 
 void FlightData::serve_csv(WiFiClient& client) {

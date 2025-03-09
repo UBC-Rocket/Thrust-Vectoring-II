@@ -14,7 +14,7 @@
 
 const bool WAIT_FOR_EMATCH = false; // set to true if this is a real launch/test - 
                                     // this will prevent data logging and servo movement until the ematch is lit
-bool done = false; // Is flight finished
+extern bool done; // Is flight finished
 bool started = false; // Is flight started
 
 // PMOS and NMOS pins for remote ignition control
@@ -28,13 +28,19 @@ void setup() {
   Serial.begin(115200);
   while(!Serial) {}
 
-  initWifiAccessPoint();
-  startWifiServer();
+  Serial.println("\n\n==========================================");
+  Serial.println("STARTING WIFI INITIALIZATION");
+  Serial.println("==========================================");
+  bool wifiResult = initWifiAccessPoint();
+  Serial.println("WiFi AP Initialization result: " + String(wifiResult ? "SUCCESS" : "FAILED"));
+  
+  Serial.println("Starting WiFi server...");
+  bool serverResult = startWifiServer();
+  Serial.println("WiFi server result: " + String(serverResult ? "SUCCESS" : "FAILED"));
   
   initIMU();
   PID_Config();
 
-  
   if (!SPIFFS.begin()) {
     Serial.println("Failed to mount SPIFFS. Formatting...");
     
@@ -77,10 +83,13 @@ void loop() {
   remoteControl(beginFlight);
 
   yield();
+  delay(10);
 }
 
 // Flip PMOS and NMOS states for ignition control, begin gimbal control and data logging
 void beginFlight() {
+
+  Serial.println("CONNECTED");
   started = true;
   pmosState = !pmosState;  // Toggle PMOS state
   nmosState = !nmosState;  // Toggle NMOS state
