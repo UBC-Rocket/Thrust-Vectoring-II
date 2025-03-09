@@ -1,11 +1,10 @@
 // Wifi_Control.h
 #ifndef WIFI_CONTROL_H
 #define WIFI_CONTROL_H
-
 #include <WiFi.h>
 #include <mbedtls/aes.h>
 #include <mbedtls/md.h>
-#include <Random.h>
+#include <esp_random.h>
 
 // Configuration constants
 #define KEY_SIZE 32
@@ -44,11 +43,12 @@ extern uint8_t encryptionKey[KEY_SIZE];
 extern uint8_t currentNonce[NONCE_SIZE];
 
 // Core functions
-bool initWifiAccessPoint();  // Now returns bool for error checking
-bool startWifiServer();      // Now returns bool for error checking
+bool initWifiAccessPoint(); // Now returns bool for error checking
+bool startWifiServer(); // Now returns bool for error checking
 void remoteControl(void (*beginFlight)());
 
 // Security functions
+bool generateSecurityParameters();
 bool authenticateClient(WiFiClient& client);
 bool encryptData(const uint8_t* input, size_t input_len, uint8_t* output, size_t* output_len);
 bool decryptData(const uint8_t* input, size_t input_len, uint8_t* output, size_t* output_len);
@@ -57,7 +57,6 @@ bool verifyHMAC(const uint8_t* data, size_t data_len, const uint8_t* hmac);
 
 // Error handling and acknowledgment functions
 void sendAcknowledgment(WiFiClient& client, CommandAck ack);
-WifiStatus handleError(WifiStatus error);
+bool handleError(WifiStatus error);
 String getStatusMessage(WifiStatus status);
-
 #endif // WIFI_CONTROL_H

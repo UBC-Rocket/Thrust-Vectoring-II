@@ -52,42 +52,73 @@ class ESP32GUI:
 
     def encrypt_data(self, data):
         try:
+            print(f"Encrypting data: '{data}'")
             cipher = AES.new(self.encryption_key, AES.MODE_ECB)
             padded_data = pad(data.encode(), AES.block_size)
-            return cipher.encrypt(padded_data)
+            print(f"Padded data length: {len(padded_data)}")
+            encrypted = cipher.encrypt(padded_data)
+            print(f"Encrypted data length: {len(encrypted)}")
+            # Print first few bytes of encrypted data
+            print(f"Encrypted data preview: {' '.join([hex(b)[2:].zfill(2) for b in encrypted[:8]])}")
+            return encrypted
         except Exception as e:
             print(f"Encryption error: {e}")
             return None
 
     def decrypt_data(self, encrypted_data):
         try:
+            print(f"Decrypting data, length: {len(encrypted_data)}")
+            print(f"Encrypted data preview: {' '.join([hex(b)[2:].zfill(2) for b in encrypted_data[:8]])}")
             cipher = AES.new(self.encryption_key, AES.MODE_ECB)
             decrypted_data = cipher.decrypt(encrypted_data)
-            return unpad(decrypted_data, AES.block_size)
+            print(f"Decrypted padded data length: {len(decrypted_data)}")
+            unpadded = unpad(decrypted_data, AES.block_size)
+            print(f"Unpadded data length: {len(unpadded)}")
+            result = unpadded.decode()
+            print(f"Decrypted data: '{result}'")
+            return result
         except Exception as e:
             print(f"Decryption error: {e}")
             return None
 
     def generate_hmac(self, data):
-        return hmac.new(self.encryption_key, data, hashlib.sha256).digest()
+        print(f"Generating HMAC for data of length: {len(data)}")
+        print(f"Data preview: {' '.join([hex(b)[2:].zfill(2) for b in data[:8]])}")
+        print(f"Key preview: {' '.join([hex(b)[2:].zfill(2) for b in self.encryption_key[:8]])}")
+        
+        hmac_result = hmac.new(self.encryption_key, data, hashlib.sha256).digest()
+        print(f"HMAC result length: {len(hmac_result)}")
+        print(f"HMAC preview: {' '.join([hex(b)[2:].zfill(2) for b in hmac_result[:8]])}")
+        return hmac_result
 
     def authenticate_with_server(self, sock):
         try:
+            print("\n----- AUTH START -----")
             # Receive challenge nonce
+            print("Waiting to receive nonce challenge...")
             nonce = sock.recv(16)
             if not nonce:
+                print("Failed to receive nonce")
                 return False
             
+            print(f"Received nonce of length: {len(nonce)}")
+            print(f"Nonce preview: {' '.join([hex(b)[2:].zfill(2) for b in nonce[:8]])}")
+            
             # Generate HMAC response
+            print("Generating HMAC response...")
             hmac_response = self.generate_hmac(nonce)
             
             # Send response
+            print(f"Sending HMAC response of length: {len(hmac_response)}")
             sock.send(hmac_response)
+            
+            print("Authentication process completed")
+            print("----- AUTH END -----\n")
             
             self.root.after(0, lambda: self.auth_label.config(
                 text="Authentication: Authenticated", fg="green"))
             return True
-            
+                
         except Exception as e:
             print(f"Authentication error: {e}")
             self.root.after(0, lambda: self.auth_label.config(
@@ -146,14 +177,21 @@ class ESP32GUI:
             return False
 
     def send_command(self):
+        print("Attempting to send command...")
+        print(f"Target IP: {self.esp32_ip}, Port: {self.esp32_port}")
+        
         sock = None
         retry_count = 0
         
         while retry_count < self.max_retries:
             try:
+                print(f"Connection attempt {retry_count+1}/{self.max_retries}")
                 sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
                 sock.settimeout(5)
+                
+                print("Connecting to socket...")
                 sock.connect((self.esp32_ip, self.esp32_port))
+                print("Socket connected!")
                 
                 # Authenticate first
                 if not self.authenticate_with_server(sock):

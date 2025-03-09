@@ -13,10 +13,10 @@ uint8_t currentNonce[NONCE_SIZE];
 mbedtls_aes_context aes;
 
 // Error handling helper function
-WifiStatus handleError(WifiStatus error) {
+bool handleError(WifiStatus error) {
     String errorMsg = getStatusMessage(error);
     Serial.println("Error: " + errorMsg);
-    return error;
+    return false;
 }
 
 String getStatusMessage(WifiStatus status) {
@@ -33,68 +33,166 @@ String getStatusMessage(WifiStatus status) {
 }
 
 bool initWifiAccessPoint() {
+    Serial.println("\n-----WIFI SETUP START-----");
     Serial.println("Setting up Wi-Fi Access Point...");
     
     // Generate random encryption key
     if(!generateSecurityParameters()) {
-        return handleError(WifiStatus::INIT_FAILED);
+        Serial.println("Failed to generate security parameters");
+        handleError(WifiStatus::INIT_FAILED);
+        return false;
     }
+    Serial.println("Security parameters generated successfully");
     
     // Initialize encryption
     mbedtls_aes_init(&aes);
     if(mbedtls_aes_setkey_enc(&aes, encryptionKey, 256) != 0) {
-        return handleError(WifiStatus::INIT_FAILED);
+        Serial.println("Failed to initialize encryption");
+        handleError(WifiStatus::INIT_FAILED);
+        return false;
     }
+    Serial.println("Encryption initialized successfully");
     
     // Start AP with WPA2
-    if(!WiFi.softAP(ssid, password, 1, 1)) {  // Channel 1, Hidden SSID
-        return handleError(WifiStatus::INIT_FAILED);
+    Serial.print("Creating AP with SSID: ");
+    Serial.println(ssid);
+    
+    // Change the last parameter to 0 to make it visible (not hidden)
+    if(!WiFi.softAP(ssid, password, 1, 0)) {
+        Serial.println("Failed to create access point");
+        handleError(WifiStatus::INIT_FAILED);
+        return false;
     }
     
     IPAddress IP = WiFi.softAPIP();
     Serial.print("Access Point IP: ");
     Serial.println(IP);
+    Serial.println("-----WIFI SETUP COMPLETE-----\n");
     return true;
 }
 
 bool generateSecurityParameters() {
-    if(!ESP.getRandomBytes(encryptionKey, KEY_SIZE)) {
-        return false;
-    }
+    // Use password to generate key instead of random bytes
+    // Password is already defined as "UBCRocket_TVR_2024!"
+    
+    // Initialize the hash context
+    mbedtls_md_context_t ctx;
+    mbedtls_md_init(&ctx);
+    mbedtls_md_setup(&ctx, mbedtls_md_info_from_type(MBEDTLS_MD_SHA256), 0);
+    mbedtls_md_starts(&ctx);
+    
+    // Update with password
+    mbedtls_md_update(&ctx, (const unsigned char*)password, strlen(password));
+    
+    // Calculate the hash
+    mbedtls_md_finish(&ctx, encryptionKey);
+    mbedtls_md_free(&ctx);
+    
+    Serial.println("Key derived from password");
+    
     return true;
 }
 
 bool authenticateClient(WiFiClient& client) {
+    Serial.println("\n----- AUTH START -----");
+    
     // Generate new challenge nonce
-    if(!ESP.getRandomBytes(currentNonce, NONCE_SIZE)) {
-        return handleError(WifiStatus::AUTH_FAILED);
+    Serial.println("Generating nonce...");
+    for (int i = 0; i < NONCE_SIZE; i++) {
+        currentNonce[i] = (uint8_t)esp_random();
     }
+    
+    // Print nonce for debugging (first few bytes)
+    Serial.print("Nonce (first 4 bytes): ");
+    for (int i = 0; i < 4; i++) {
+        Serial.print(currentNonce[i], HEX);
+        Serial.print(" ");
+    }
+    Serial.println();
     
     // Send challenge
+    Serial.println("Sending nonce challenge to client...");
     if(client.write(currentNonce, NONCE_SIZE) != NONCE_SIZE) {
-        return handleError(WifiStatus::AUTH_FAILED);
+        Serial.println("Failed to send complete nonce");
+        handleError(WifiStatus::AUTH_FAILED);
+        return false;
     }
+    Serial.println("Nonce sent successfully");
     
     // Wait for response with timeout
+    Serial.println("Waiting for HMAC response...");
     unsigned long startTime = millis();
     while(!client.available() && millis() - startTime < AUTH_TIMEOUT) {
         delay(10);
     }
     
     if(!client.available()) {
-        return handleError(WifiStatus::TIMEOUT);
+        Serial.println("Timeout waiting for HMAC response");
+        handleError(WifiStatus::TIMEOUT);
+        return false;
     }
     
     // Verify response
     uint8_t receivedHMAC[32];
+    Serial.println("Reading HMAC response...");
     if(client.readBytes(receivedHMAC, 32) != 32) {
-        return handleError(WifiStatus::AUTH_FAILED);
+        Serial.println("Failed to read complete HMAC");
+        handleError(WifiStatus::AUTH_FAILED);
+        return false;
     }
+    
+    // Print received HMAC (first few bytes)
+    Serial.print("Received HMAC (first 4 bytes): ");
+    for (int i = 0; i < 4; i++) {
+        Serial.print(receivedHMAC[i], HEX);
+        Serial.print(" ");
+    }
+    Serial.println();
     
     uint8_t expectedHMAC[32];
     generateHMAC(currentNonce, NONCE_SIZE, expectedHMAC);
     
-    return memcmp(receivedHMAC, expectedHMAC, 32) == 0;
+    // Print expected HMAC (first few bytes)
+    Serial.print("Expected HMAC (first 4 bytes): ");
+    for (int i = 0; i < 4; i++) {
+        Serial.print(expectedHMAC[i], HEX);
+        Serial.print(" ");
+    }
+    Serial.println();
+    
+    bool result = (memcmp(receivedHMAC, expectedHMAC, 32) == 0);
+    Serial.println(result ? "HMAC authentication SUCCESS" : "HMAC authentication FAILED");
+    Serial.println("----- AUTH END -----\n");
+    
+    return result;
+}
+
+void generateHMAC(const uint8_t* data, size_t data_len, uint8_t* hmac) {
+    mbedtls_md_context_t ctx;
+    mbedtls_md_init(&ctx);
+    
+    if(mbedtls_md_setup(&ctx, mbedtls_md_info_from_type(MBEDTLS_MD_SHA256), 1) != 0) {
+        Serial.println("HMAC setup failed");
+        return;
+    }
+    
+    if(mbedtls_md_hmac_starts(&ctx, encryptionKey, KEY_SIZE) != 0) {
+        Serial.println("HMAC starts failed");
+        mbedtls_md_free(&ctx);
+        return;
+    }
+    
+    if(mbedtls_md_hmac_update(&ctx, data, data_len) != 0) {
+        Serial.println("HMAC update failed");
+        mbedtls_md_free(&ctx);
+        return;
+    }
+    
+    if(mbedtls_md_hmac_finish(&ctx, hmac) != 0) {
+        Serial.println("HMAC finish failed");
+    }
+    
+    mbedtls_md_free(&ctx);
 }
 
 void sendAcknowledgment(WiFiClient& client, CommandAck ack) {
@@ -104,19 +202,37 @@ void sendAcknowledgment(WiFiClient& client, CommandAck ack) {
     jsonAck += "\"status\":\"" + getStatusMessage(ack.status) + "\",";
     jsonAck += "\"message\":\"" + ack.message + "\"}";
     
+    Serial.print("JSON ACK: ");
+    Serial.println(jsonAck);
+    
     // Encrypt acknowledgment
     uint8_t encryptedAck[512];
     size_t encryptedLen;
     
     if(encryptData((uint8_t*)jsonAck.c_str(), jsonAck.length(), encryptedAck, &encryptedLen)) {
-        client.write(encryptedAck, encryptedLen);
+        Serial.print("Encrypted ACK length: ");
+        Serial.println(encryptedLen);
+        size_t bytesSent = client.write(encryptedAck, encryptedLen);
+        Serial.print("Bytes sent: ");
+        Serial.println(bytesSent);
+    } else {
+        Serial.println("Failed to encrypt acknowledgment");
     }
 }
 
 bool encryptData(const uint8_t* input, size_t input_len, uint8_t* output, size_t* output_len) {
+    Serial.println("Encrypting data...");
+    Serial.print("Input length: ");
+    Serial.println(input_len);
+    
     // Add PKCS7 padding
     size_t padded_len = (input_len + 15) & ~15;
     uint8_t padding = padded_len - input_len;
+    
+    Serial.print("Padded length: ");
+    Serial.println(padded_len);
+    Serial.print("Padding bytes: ");
+    Serial.println(padding);
     
     // Copy input and add padding
     memcpy(output, input, input_len);
@@ -127,85 +243,144 @@ bool encryptData(const uint8_t* input, size_t input_len, uint8_t* output, size_t
     // Encrypt data
     for(size_t i = 0; i < padded_len; i += 16) {
         if(mbedtls_aes_crypt_ecb(&aes, MBEDTLS_AES_ENCRYPT, output + i, output + i) != 0) {
+            Serial.println("Encryption failed");
             return false;
         }
     }
     
+    Serial.println("Encryption successful");
     return true;
 }
 
 bool decryptData(const uint8_t* input, size_t input_len, uint8_t* output, size_t* output_len) {
+    Serial.println("Decrypting data...");
+    Serial.print("Input length: ");
+    Serial.println(input_len);
+    
     if(input_len % 16 != 0) {
+        Serial.println("Invalid input length - not a multiple of 16");
         return false;
     }
     
     // Decrypt data
     for(size_t i = 0; i < input_len; i += 16) {
         if(mbedtls_aes_crypt_ecb(&aes, MBEDTLS_AES_DECRYPT, input + i, output + i) != 0) {
+            Serial.println("Decryption failed");
             return false;
         }
     }
     
     // Remove padding
     uint8_t padding = output[input_len - 1];
+    Serial.print("Padding bytes: ");
+    Serial.println(padding);
+    
     if(padding > 16) {
+        Serial.println("Invalid padding value");
         return false;
     }
     
     *output_len = input_len - padding;
+    Serial.print("Decrypted length: ");
+    Serial.println(*output_len);
+    
+    Serial.println("Decryption successful");
     return true;
+}
+
+bool verifyHMAC(const uint8_t* data, size_t data_len, const uint8_t* hmac) {
+    uint8_t calculatedHMAC[32];
+    generateHMAC(data, data_len, calculatedHMAC);
+    return memcmp(calculatedHMAC, hmac, 32) == 0;
 }
 
 void remoteControl(void (*beginFlight)()) {
     WiFiClient client = wifiServer.available();
     
     if (client) {
-        Serial.println("Client connected");
+        Serial.println("\n\n!!! CLIENT CONNECTED !!!");
         
         // Authenticate client
+        Serial.println("Starting authentication...");
         if (!authenticateClient(client)) {
+            Serial.println("Authentication failed, disconnecting client");
             client.stop();
             return;
         }
         
-        Serial.println("Client authenticated");
+        Serial.println("Client authenticated successfully");
         CommandAck ack;
         
         while (client.connected()) {
             if (client.available()) {
+                Serial.println("Data available from client");
+                
                 // Read encrypted data
                 uint8_t encryptedData[1024];
                 size_t dataLen = client.readBytes(encryptedData, 1024);
+                Serial.print("Received ");
+                Serial.print(dataLen);
+                Serial.println(" bytes of encrypted data");
                 
                 // Decrypt data
                 uint8_t decryptedData[1024];
                 size_t decryptedLen;
                 
                 if (!decryptData(encryptedData, dataLen, decryptedData, &decryptedLen)) {
+                    Serial.println("Decryption failed");
                     ack = {false, millis(), WifiStatus::ENCRYPTION_ERROR, "Decryption failed"};
                     sendAcknowledgment(client, ack);
                     continue;
                 }
                 
+                Serial.print("Decrypted data: ");
+                for (size_t i = 0; i < decryptedLen; i++) {
+                    Serial.print((char)decryptedData[i]);
+                }
+                Serial.println();
+                
                 // Process command
                 if (decryptedLen > 0 && decryptedData[0] == 'A') {
+                    Serial.println("Valid 'A' command received, initiating flight");
                     beginFlight();
                     ack = {true, millis(), WifiStatus::SUCCESS, "Flight initiated"};
                 } else {
+                    Serial.print("Invalid command: ");
+                    for (size_t i = 0; i < decryptedLen; i++) {
+                        Serial.print((char)decryptedData[i]);
+                    }
+                    Serial.println();
                     ack = {false, millis(), WifiStatus::INVALID_COMMAND, "Invalid command"};
                 }
                 
+                Serial.println("Sending acknowledgment...");
                 sendAcknowledgment(client, ack);
+                Serial.println("Acknowledgment sent");
             }
             
             // Check connection health
             if (!client.connected()) {
+                Serial.println("Client disconnected unexpectedly");
                 handleError(WifiStatus::CONNECTION_LOST);
                 break;
             }
         }
         
         client.stop();
-        Serial.println("Client disconnected");
+        Serial.println("Client disconnected normally");
+    } else {
+        // This will help us see if the function is being called periodically
+        static unsigned long lastCheck = 0;
+        unsigned long now = millis();
+        if (now - lastCheck > 5000) {  // Print every 5 seconds
+            Serial.println("Waiting for client connection...");
+            lastCheck = now;
+        }
     }
+}
+
+bool startWifiServer() {
+    wifiServer.begin();
+    Serial.println("WiFi server started");
+    return true;
 }
