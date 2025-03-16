@@ -30,6 +30,7 @@ class FlightData
         
         void update_values();
         void print_values();
+        void print_values_arduino();
         void save_values();
         void serve_csv(WiFiClient& client);
 };

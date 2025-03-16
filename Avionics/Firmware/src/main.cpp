@@ -1,7 +1,7 @@
 /*
 * To download the data as a .csv file:
 *     1. Wait for the flight to be finished (all data is collected)
-*     2. Connect to the ESP32's WiFi network (name is TVR and password is 12345678) 
+*     2. Connect to the ESP32's WiFi network (name is TVR and password is 12345678)
 *     3. On a web browser go to http://192.168.4.1/download
 */
 

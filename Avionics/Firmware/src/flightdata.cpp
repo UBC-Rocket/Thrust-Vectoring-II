@@ -49,23 +49,13 @@ void FlightData::update_values() {
   this->magnetic = mag.magnetic;
   this->temperature = temp.temperature;
 
-  // Account for IMU position within rocket:
-  if (rotation_axis == 'X') {
-    this->acceleration.x = accel.acceleration.x - accel_x_offset;
-    this->acceleration.y = accel.acceleration.z - accel_z_offset;
-    this->acceleration.z = accel.acceleration.y - accel_y_offset;
-    this->gyroscope.x = gyro.gyro.x - gyro_x_offset;
-    this->gyroscope.y = gyro.gyro.z - gyro_z_offset;
-    this->gyroscope.z = gyro.gyro.y - gyro_y_offset;
-  } 
-  else if (rotation_axis == 'Y') {
-    this->acceleration.x = accel.acceleration.z - accel_z_offset;
-    this->acceleration.y = accel.acceleration.y - accel_y_offset;
-    this->acceleration.z = accel.acceleration.x - accel_x_offset;
-    this->gyroscope.x = gyro.gyro.z - gyro_z_offset;
-    this->gyroscope.y = gyro.gyro.y - gyro_y_offset;
-    this->gyroscope.z = gyro.gyro.x - gyro_x_offset;
-  } 
+  // Account for IMU rotation within rocket:
+  this->acceleration.z = accel.acceleration.x - accel_x_offset;
+  this->acceleration.y = accel.acceleration.z - accel_z_offset;
+  this->acceleration.x = accel.acceleration.y - accel_y_offset;
+  this->gyroscope.z = gyro.gyro.x - gyro_x_offset;
+  this->gyroscope.y = gyro.gyro.z - gyro_z_offset;
+  this->gyroscope.x = gyro.gyro.y - gyro_y_offset;
 }
 
 void FlightData::print_values() {
@@ -74,6 +64,14 @@ void FlightData::print_values() {
   // printVector("Gyroscope: ", gyroscope);  
   // printVector("Magnetometer: ", magnetic);
   // Serial.print("Temperature: "); Serial.print(temperature, 2);
+}
+
+void FlightData::print_values_arduino() {
+  Serial.print(acceleration.x);
+  Serial.print("\t");
+  Serial.print(acceleration.y);
+  Serial.print("\t");
+  Serial.println(acceleration.z);
 }
 
 void printVector(const char* label, sensors_vec_t vec) {
@@ -101,6 +99,7 @@ void initialize_csv() {
   if (!file) {
       Serial.println("Failed to open file for initializing. Formatting...");
       SPIFFS.format();
+<<<<<<< HEAD
       if (!SPIFFS.begin()) {
         Serial.println("Failed to mount SPIFFS during formatting.");
         return;
@@ -108,12 +107,19 @@ void initialize_csv() {
       
       // Try to open the file again after formatting
       file = SPIFFS.open("/data.csv", FILE_WRITE);
+=======
+      if (!SPIFFS.begin())
+        Serial.println("Failed to mount SPIFFS during formatting.");
+>>>>>>> e10866b (Axes correctly oriented)
       if (!file) {
         Serial.println("Failed to open file for initializing. Terminating...");
         return;
       }
   }
+<<<<<<< HEAD
   
+=======
+>>>>>>> e10866b (Axes correctly oriented)
   Serial.println("Opened file for initializing");
 
   file.print("Time (ms)"); file.print(",");
