@@ -1,18 +1,9 @@
-import numpy as np
+import pandas as pd
+from scipy.interpolate import interp1d
 
+# Read the CSV file (make sure to adjust the file path)
+data = pd.read_csv('newrocket.csv', comment='#')
 
-
-class ThrustInput:
-    def __init__(self, thrust, angle_deg):
-        self.thrust = thrust
-        self.angle_rad = np.radians(angle_deg)
-
-    def calculate_forces(self):
-        Fx = self.thrust * np.cos(self.angle_rad)  # Force in x-direction
-        Fz = self.thrust * np.sin(self.angle_rad)  # Force in z-direction
-        return Fx, Fz
-
-    def calculate_moment(self, COM_offset):
-        moment = self.thrust * COM_offset * np.sin(self.angle_rad)
-        return moment
+# Create a thrust profile: map time (s) to thrust (N)
+thrust_profile = interp1d(data['Time (s)'], data['Thrust (N)'], fill_value="extrapolate")
 
