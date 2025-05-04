@@ -96,9 +96,4 @@ void beginFlight() {
   digitalWrite(PMOS_PIN, pmosState);
   digitalWrite(NMOS_PIN, nmosState);
 
-  // Debugging output to monitor PMOS and NMOS states
-  // Serial.print("PMOS: ");
-  // Serial.println(pmosState);
-  // Serial.print("NMOS: ");
-  // Serial.println(nmosState);
 }
