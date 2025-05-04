@@ -103,13 +103,6 @@ bool authenticateClient(WiFiClient& client) {
         currentNonce[i] = (uint8_t)esp_random();
     }
     
-    // Print nonce for debugging (first few bytes)
-    Serial.print("Nonce (first 4 bytes): ");
-    for (int i = 0; i < 4; i++) {
-        Serial.print(currentNonce[i], HEX);
-        Serial.print(" ");
-    }
-    Serial.println();
     
     // Send challenge
     Serial.println("Sending nonce challenge to client...");

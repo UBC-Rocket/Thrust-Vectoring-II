@@ -99,7 +99,6 @@ void initialize_csv() {
   if (!file) {
       Serial.println("Failed to open file for initializing. Formatting...");
       SPIFFS.format();
-<<<<<<< HEAD
       if (!SPIFFS.begin()) {
         Serial.println("Failed to mount SPIFFS during formatting.");
         return;
@@ -107,19 +106,13 @@ void initialize_csv() {
       
       // Try to open the file again after formatting
       file = SPIFFS.open("/data.csv", FILE_WRITE);
-=======
-      if (!SPIFFS.begin())
-        Serial.println("Failed to mount SPIFFS during formatting.");
->>>>>>> e10866b (Axes correctly oriented)
+
       if (!file) {
         Serial.println("Failed to open file for initializing. Terminating...");
         return;
       }
   }
-<<<<<<< HEAD
-  
-=======
->>>>>>> e10866b (Axes correctly oriented)
+
   Serial.println("Opened file for initializing");
 
   file.print("Time (ms)"); file.print(",");
