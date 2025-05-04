@@ -1,4 +1,4 @@
-// flightdata.cpp
+// src/flightdata.cpp
 #include "flightdata.h"
 #include "main.h"
 #include "IMU_Control.h"
@@ -66,13 +66,6 @@ void FlightData::print_values() {
   // Serial.print("Temperature: "); Serial.print(temperature, 2);
 }
 
-void FlightData::print_values_arduino() {
-  Serial.print(acceleration.x);
-  Serial.print("\t");
-  Serial.print(acceleration.y);
-  Serial.print("\t");
-  Serial.println(acceleration.z);
-}
 
 void printVector(const char* label, sensors_vec_t vec) {
   // Serial.print(label);

@@ -1,4 +1,4 @@
-# remote_control.py
+# src/remote_control.py
 import tkinter as tk
 from tkinter import messagebox
 import socket
@@ -9,7 +9,7 @@ import hmac
 import hashlib
 from Crypto.Cipher import AES
 from Crypto.Util.Padding import pad, unpad
-import os
+
 
 class ESP32GUI:
     def __init__(self):
@@ -83,6 +83,11 @@ class ESP32GUI:
             return None
 
     def generate_hmac(self, data):
+        print(f"\n===== CLIENT HMAC GENERATION =====")
+        print(f"Generating HMAC for data of length: {len(data)}")
+        print(f"Data hex dump: {' '.join([hex(b)[2:].zfill(2) for b in data])}")
+        print(f"Key hex dump: {' '.join([hex(b)[2:].zfill(2) for b in self.encryption_key])}")
+    
         print(f"Generating HMAC for data of length: {len(data)}")
         print(f"Data preview: {' '.join([hex(b)[2:].zfill(2) for b in data[:8]])}")
         print(f"Key preview: {' '.join([hex(b)[2:].zfill(2) for b in self.encryption_key[:8]])}")
@@ -90,9 +95,18 @@ class ESP32GUI:
         hmac_result = hmac.new(self.encryption_key, data, hashlib.sha256).digest()
         print(f"HMAC result length: {len(hmac_result)}")
         print(f"HMAC preview: {' '.join([hex(b)[2:].zfill(2) for b in hmac_result[:8]])}")
+        print(f"HMAC result length: {len(hmac_result)}")
+        print(f"HMAC full hex dump: {' '.join([hex(b)[2:].zfill(2) for b in hmac_result])}")
+        print(f"===== END CLIENT HMAC GENERATION =====\n")
+
         return hmac_result
 
     def authenticate_with_server(self, sock):
+        print("\n===== CLIENT AUTH DIAGNOSTICS =====")
+        print(f"Socket details at start of authentication: {sock}")
+        print(f"Socket timeout: {sock.gettimeout()}")
+        print(f"Password used: {self.password}")
+        print(f"Derived key (first 8 bytes): {' '.join([hex(b)[2:].zfill(2) for b in self.encryption_key[:8]])}")
         try:
             print("\n----- AUTH START -----")
             # Receive challenge nonce
@@ -101,7 +115,7 @@ class ESP32GUI:
             if not nonce:
                 print("Failed to receive nonce")
                 return False
-            
+            print(f"Received nonce hex dump: {' '.join([hex(b)[2:].zfill(2) for b in nonce])}")
             print(f"Received nonce of length: {len(nonce)}")
             print(f"Nonce preview: {' '.join([hex(b)[2:].zfill(2) for b in nonce[:8]])}")
             
@@ -110,11 +124,15 @@ class ESP32GUI:
             hmac_response = self.generate_hmac(nonce)
             
             # Send response
+            print(f"Full HMAC response hex dump: {' '.join([hex(b)[2:].zfill(2) for b in hmac_response])}")
+            print(f"Sending HMAC of length {len(hmac_response)} bytes")
             print(f"Sending HMAC response of length: {len(hmac_response)}")
-            sock.send(hmac_response)
+            send_bytes = sock.send(hmac_response)
+            print(f"Actually sent {send_bytes} bytes of HMAC")
             
             print("Authentication process completed")
             print("----- AUTH END -----\n")
+            print("===== END CLIENT AUTH DIAGNOSTICS =====\n")
             
             self.root.after(0, lambda: self.auth_label.config(
                 text="Authentication: Authenticated", fg="green"))
@@ -161,7 +179,7 @@ class ESP32GUI:
             if not decrypted_ack:
                 return False
             
-            ack_data = json.loads(decrypted_ack.decode())
+            ack_data = json.loads(decrypted_ack)
             
             # Update status based on acknowledgment
             status_text = f"Status: {ack_data['status']}"
@@ -178,6 +196,9 @@ class ESP32GUI:
             return False
 
     def send_command(self):
+        print("\n===== STARTING COMMAND SEQUENCE =====")
+        print(f"Current time: {time.time()}")
+        print("Attempting to send command...")
         print("Attempting to send command...")
         print(f"Target IP: {self.esp32_ip}, Port: {self.esp32_port}")
         
@@ -189,10 +210,19 @@ class ESP32GUI:
                 print(f"Connection attempt {retry_count+1}/{self.max_retries}")
                 sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
                 sock.settimeout(5)
+
+                try:
+                    print("Connecting to socket...")
+                    sock.connect((self.esp32_ip, self.esp32_port))
+                    print("Socket connected successfully!")
+                    print(f"Socket details after connect: {sock}")
+                except Exception as connect_err:
+                    print(f"Connection exception: {connect_err}")
+                    raise connect_err
                 
-                print("Connecting to socket...")
-                sock.connect((self.esp32_ip, self.esp32_port))
-                print("Socket connected!")
+                print("Adding a 0.5 second delay after connection...")
+                time.sleep(0.5)
+                print("Delay complete, proceeding with authentication...")
                 
                 # Authenticate first
                 if not self.authenticate_with_server(sock):
@@ -230,8 +260,15 @@ class ESP32GUI:
             messagebox.showerror("Error", "Connection timed out after maximum retries")
 
     def derive_key(self):
+        print("\n===== CLIENT KEY DERIVATION =====")
+        print(f"Using password: '{self.password}'")
+        print(f"Password bytes: {' '.join([hex(b)[2:].zfill(2) for b in self.password.encode()])}")
+        
         # Derive 32-byte key from password using SHA-256
         self.encryption_key = hashlib.sha256(self.password.encode()).digest()
+        
+        print(f"Derived key (full hex): {' '.join([hex(b)[2:].zfill(2) for b in self.encryption_key])}")
+        print("===== END CLIENT KEY DERIVATION =====\n")
 
     def run(self):
         # Initialize encryption key before starting
