@@ -1,4 +1,4 @@
-// include/Wifi_Control.h
+// Firmware/include/Wifi_Control.h
 #ifndef WIFI_CONTROL_H
 #define WIFI_CONTROL_H
 #include <WiFi.h>

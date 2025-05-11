@@ -1,4 +1,4 @@
-// include/IMU_Control.h
+// Firmware/include/IMU_Control.h
 #ifndef IMU_Control
 #define IMU_Control
 
@@ -18,9 +18,9 @@ extern float accel_x_offset;
 extern float accel_y_offset;
 extern float accel_z_offset;
 
-void initIMU();
 void configIMU();
 void calibrateGyroAccel();
+bool initIMU(int maxRetries = 3);
 
 // Set low noise modes for both gyroscope and accelerometer
 void setLowNoiseMode();

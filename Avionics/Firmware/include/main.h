@@ -1,6 +1,7 @@
-// include/main.h
+// Firmware/include/main.h
 #ifndef MAIN_H
 #define MAIN_H
+#define FIRMWARE_VERSION "1.0.0"
 
 #include <Arduino.h>
 #include <Wire.h>
