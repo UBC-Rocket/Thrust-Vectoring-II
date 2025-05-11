@@ -1,4 +1,4 @@
-// src/IMU_Control.cpp
+// Firmware/src/IMU_Control.cpp
 #include "IMU_Control.h"
 
 Adafruit_ICM20948 imu;
@@ -9,15 +9,29 @@ float accel_x_offset = 0;
 float accel_y_offset = 0;
 float accel_z_offset = 0;
 
-void initIMU(){
-    if (!imu.begin_I2C(ICM_ADDR, &Wire)) {
-    Serial.println("Failed to find imu20948 chip");
-    while (true) {
-      delay(10);
+
+bool initIMU(int maxRetries) {
+  int retryCount = 0;
+  
+  while (retryCount < maxRetries) {
+    if (imu.begin_I2C(ICM_ADDR, &Wire)) {
+      Serial.println("IMU20948 found");
+      return true;
     }
+    
+    Serial.print("Failed to find IMU20948 chip, retry ");
+    Serial.print(retryCount + 1);
+    Serial.print(" of ");
+    Serial.println(maxRetries);
+    
+    retryCount++;
+    delay(500);
   }
-  Serial.println("imu20948 found");
+  
+  Serial.println("CRITICAL: IMU initialization failed after maximum retries");
+  return false;
 }
+
 
 void configIMU(){
   setLowNoiseMode();

@@ -1,4 +1,4 @@
-// include/flightdata.h
+// Firmware/include/flightdata.h
 #ifndef FLIGHTDATA_H
 #define FLIGHTDATA_H
 
@@ -32,6 +32,7 @@ class FlightData
         void print_values_arduino();
         void save_values();
         void serve_csv(WiFiClient& client);
+        int flightPhase;
 };
 
 // FlightData object used to store current data and access it
@@ -39,6 +40,6 @@ extern FlightData currentData;
 
 extern unsigned long startTime;
 
-void initialize_csv();
+bool initialize_csv();
 
 #endif // FLIGHTDATA_H

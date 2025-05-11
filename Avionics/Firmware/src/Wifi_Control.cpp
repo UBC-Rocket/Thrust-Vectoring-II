@@ -1,4 +1,4 @@
-// src/Wifi_Control.cpp
+// Firmware/src/Wifi_Control.cpp
 #include "Wifi_Control.h"
 #include "flightdata.h"
 
@@ -76,18 +76,16 @@ bool initWifiAccessPoint() {
 bool generateSecurityParameters() {
     // Use password to generate key instead of random bytes
     // Password is already defined as "UBCRocket_TVR_2024!"
-    Serial.print("Using password: ");
-    Serial.println(password);
+    Serial.print("Generating encryption key from password...");
 
     // Initialize the hash context
     mbedtls_md_context_t ctx;
     mbedtls_md_init(&ctx);
     mbedtls_md_setup(&ctx, mbedtls_md_info_from_type(MBEDTLS_MD_SHA256), 0);
+
     mbedtls_md_starts(&ctx);
-    
     // Update with password
     mbedtls_md_update(&ctx, (const unsigned char*)password, strlen(password));
-    
     // Calculate the hash
     mbedtls_md_finish(&ctx, encryptionKey);
     mbedtls_md_free(&ctx);
@@ -97,9 +95,6 @@ bool generateSecurityParameters() {
 
 
 bool authenticateClient(WiFiClient& client) {
-    Serial.print("Using password: ");
-    Serial.println(password);
-    
     // Generate new challenge nonce
     Serial.println("Generating nonce...");
     for (int i = 0; i < NONCE_SIZE; i++) {
@@ -123,21 +118,26 @@ bool authenticateClient(WiFiClient& client) {
     // Wait for response with timeout
     Serial.println("Waiting for HMAC response...");
     unsigned long startTime = millis();
-    while(!client.available() && millis() - startTime < AUTH_TIMEOUT) {
-        delay(10);
+    unsigned long currentTime;
+    bool timedOut = false;
+
+    while (!client.available()) {
+        currentTime = millis();
+        if (currentTime - startTime >= AUTH_TIMEOUT) {
+            timedOut = true;
+            break;
+        }
+        // Short yield to prevent watchdog triggering
+        delay(5);
     }
 
-    if(!client.available()) {
+    if (timedOut) {
         Serial.println("Timeout waiting for HMAC response");
-        Serial.print("Elapsed time: ");
-        Serial.print(millis() - startTime);
-        Serial.println(" ms");
         handleError(WifiStatus::TIMEOUT);
         return false;
     }
-    Serial.print("Received response after ");
-    Serial.print(millis() - startTime);
-    Serial.println(" ms");
+
+    Serial.print("Received HMAC response");
     
     // Verify response
     uint8_t receivedHMAC[32];
@@ -232,18 +232,9 @@ void sendAcknowledgment(WiFiClient& client, CommandAck ack) {
 
 
 bool encryptData(const uint8_t* input, size_t input_len, uint8_t* output, size_t* output_len) {
-    Serial.println("Encrypting data...");
-    Serial.print("Input length: ");
-    Serial.println(input_len);
-    
     // Add PKCS7 padding
     size_t padded_len = (input_len + 15) & ~15;
     uint8_t padding = padded_len - input_len;
-    
-    Serial.print("Padded length: ");
-    Serial.println(padded_len);
-    Serial.print("Padding bytes: ");
-    Serial.println(padding);
     
     // Copy input and add padding
     memcpy(output, input, input_len);
@@ -264,11 +255,7 @@ bool encryptData(const uint8_t* input, size_t input_len, uint8_t* output, size_t
 }
 
 
-bool decryptData(const uint8_t* input, size_t input_len, uint8_t* output, size_t* output_len) {
-    Serial.println("Decrypting data...");
-    Serial.print("Input length: ");
-    Serial.println(input_len);
-    
+bool decryptData(const uint8_t* input, size_t input_len, uint8_t* output, size_t* output_len) {  
     if(input_len % 16 != 0) {
         Serial.println("Invalid input length - not a multiple of 16");
         return false;
@@ -284,8 +271,6 @@ bool decryptData(const uint8_t* input, size_t input_len, uint8_t* output, size_t
     
     // Remove padding
     uint8_t padding = output[input_len - 1];
-    Serial.print("Padding bytes: ");
-    Serial.println(padding);
     
     if(padding > 16) {
         Serial.println("Invalid padding value");

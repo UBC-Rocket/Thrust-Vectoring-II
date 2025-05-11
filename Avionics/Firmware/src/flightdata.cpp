@@ -1,4 +1,4 @@
-// src/flightdata.cpp
+// Firmware/src/flightdata.cpp
 #include "flightdata.h"
 #include "main.h"
 #include "IMU_Control.h"
@@ -10,6 +10,7 @@ File file;
 
 unsigned long startTime = 0;
 FlightData currentData;
+extern bool done; // Declared in Wifi_Control.cpp
 
 FlightData::FlightData() {
     acceleration = {0.0, 0.0, 0.0};
@@ -35,12 +36,14 @@ float FlightData::getTemp() const {
     return temperature;
 }
 
+
 /*
 * Should add a check here to know when the flight is over (set done = true).
 * Possibly check if max accel has been greater than x and that accel has been < y for z number of checks.
 * So that the csv file isn't unnecessarily massive with zeroes.
 */
 void FlightData::update_values() {
+  if (done) return;
   time = millis() - startTime;
   
   sensors_event_t accel, gyro, mag, temp;
@@ -56,29 +59,48 @@ void FlightData::update_values() {
   this->gyroscope.z = gyro.gyro.x - gyro_x_offset;
   this->gyroscope.y = gyro.gyro.z - gyro_z_offset;
   this->gyroscope.x = gyro.gyro.y - gyro_y_offset;
+  flightPhase = (int)currentPhase;
 }
 
 
 void FlightData::save_values() {
+  if (done) return;
+
   if (!file) {
     Serial.println("File is not open, can't save data");
     return;
   }
 
-  String csvLine = String(time) + "," + String(acceleration.x, 2) + "," + String(acceleration.y, 2) + "," + String(acceleration.z, 2) + "," +
-                 String(gyroscope.x, 2) + "," + String(gyroscope.y, 2) + "," + String(gyroscope.z, 2) + "," +
-                 String(magnetic.x, 2) + "," + String(magnetic.y, 2) + "," + String(magnetic.z, 2) + "," + String(temperature, 2) + "\n";
-  file.print(csvLine);
+  // Pre-allocate a buffer for CSV formatting
+  char buffer[256]; // Large enough for one CSV line
+  
+  // Format the entire line at once using snprintf
+  int bytesWritten = snprintf(buffer, sizeof(buffer),
+    "%lu,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%d\n",
+    time,
+    acceleration.x, acceleration.y, acceleration.z,
+    gyroscope.x, gyroscope.y, gyroscope.z,
+    magnetic.x, magnetic.y, magnetic.z,
+    temperature, flightPhase);
+    
+  // Write the buffer to file
+  if (bytesWritten > 0 && bytesWritten < sizeof(buffer)) {
+    file.write(buffer, bytesWritten);
+  } else {
+    Serial.println("Error formatting CSV data");
+  }
 }
+
 
 void initialize_csv() {
   file = SPIFFS.open("/data.csv", FILE_WRITE);
   if (!file) {
       Serial.println("Failed to open file for initializing. Formatting...");
       SPIFFS.format();
+
       if (!SPIFFS.begin()) {
         Serial.println("Failed to mount SPIFFS during formatting.");
-        return;
+        return false;
       }
       
       // Try to open the file again after formatting
@@ -86,28 +108,44 @@ void initialize_csv() {
 
       if (!file) {
         Serial.println("Failed to open file for initializing. Terminating...");
-        return;
+        return false;
       }
   }
 
   Serial.println("Opened file for initializing");
 
-  file.print("Time (ms)"); file.print(",");
-  file.print("Accel x (+/- 0.1 m/s^2)"); file.print(",");
-  file.print("Accel y (+/- 0.1 m/s^2)"); file.print(",");
-  file.print("Accel z (+/- 0.1 m/s^2)"); file.print(",");
-  file.print("Gyro x (+/- 0.2 rad/s)"); file.print(",");
-  file.print("Gyro y (+/- 0.2 rad/s)"); file.print(",");
-  file.print("Gyro z (+/- 0.2 rad/s)"); file.print(",");
-  file.print("Mag x (uT)"); file.print(",");
-  file.print("Mag y (uT)"); file.print(",");
-  file.print("Mag z (uT)"); file.print(",");
-  file.println("Temp (C)");
+  bool headerWriteSuccess = true;
+  headerWriteSuccess &= file.print("Time (ms)") && file.print(",");
+  headerWriteSuccess &= file.print("Accel x (+/- 0.1 m/s^2)") && file.print(",");
+  headerWriteSuccess &= file.print("Accel y (+/- 0.1 m/s^2)") && file.print(",");
+  headerWriteSuccess &= file.print("Accel z (+/- 0.1 m/s^2)") && file.print(",");
+  headerWriteSuccess &= file.print("Gyro x (+/- 0.2 rad/s)") && file.print(",");
+  headerWriteSuccess &= file.print("Gyro y (+/- 0.2 rad/s)") && file.print(",");
+  headerWriteSuccess &= file.print("Gyro z (+/- 0.2 rad/s)") && file.print(",");
+  headerWriteSuccess &= file.print("Mag x (uT)") && file.print(",");
+  headerWriteSuccess &= file.print("Mag y (uT)") && file.print(",");
+  headerWriteSuccess &= file.print("Mag z (uT)") && file.print(",");
+  headerWriteSuccess &= file.print("Temp (C)") && file.print(",");
+  headerWriteSuccess &= file.println("Flight Phase");
+
+  if (!headerWriteSuccess) {
+    Serial.println("Failed to write CSV header");
+    file.close();
+    return false;
+  }
 
   file.close();
   file = SPIFFS.open("/data.csv", FILE_APPEND);
+  
+  if (!file) {
+    Serial.println("Failed to reopen file for writing");
+    return false;
+  }
+  
   Serial.println("Opened file for writing");
+  return true;
 }
+
 
 void FlightData::serve_csv(WiFiClient& client) {
     if (file) {

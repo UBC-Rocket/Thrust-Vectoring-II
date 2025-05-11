@@ -1,4 +1,4 @@
-# src/remote_control.py
+# Firmware/src/remote_control.py
 import tkinter as tk
 from tkinter import messagebox
 import socket
@@ -94,11 +94,7 @@ class ESP32GUI:
 
 
     def authenticate_with_server(self, sock):
-        print(f"Socket details at start of authentication: {sock}")
-        print(f"Socket timeout: {sock.gettimeout()}")
-        print(f"Password used: {self.password}")
         try:
-            print("\n----- AUTH START -----")
             # Receive challenge nonce
             print("Waiting to receive nonce challenge...")
             nonce = sock.recv(16)
@@ -113,12 +109,8 @@ class ESP32GUI:
             
             # Send response
             print(f"Sending HMAC of length {len(hmac_response)} bytes")
-            print(f"Sending HMAC response of length: {len(hmac_response)}")
             send_bytes = sock.send(hmac_response)
             print(f"Actually sent {send_bytes} bytes of HMAC")
-            
-            print("Authentication process completed")
-            print("----- AUTH END -----\n")
             
             self.root.after(0, lambda: self.auth_label.config(
                 text="Authentication: Authenticated", fg="green"))
@@ -187,11 +179,6 @@ class ESP32GUI:
 
 
     def send_command(self):
-        print("\n===== STARTING COMMAND SEQUENCE =====")
-        print(f"Current time: {time.time()}")
-        print("Attempting to send command...")
-        print(f"Target IP: {self.esp32_ip}, Port: {self.esp32_port}")
-        
         sock = None
         retry_count = 0
         
@@ -202,10 +189,7 @@ class ESP32GUI:
                 sock.settimeout(5)
 
                 try:
-                    print("Connecting to socket...")
                     sock.connect((self.esp32_ip, self.esp32_port))
-                    print("Socket connected successfully!")
-                    print(f"Socket details after connect: {sock}")
                 except Exception as connect_err:
                     print(f"Connection exception: {connect_err}")
                     raise connect_err
@@ -251,13 +235,8 @@ class ESP32GUI:
 
 
     def derive_key(self):
-        print("\n===== CLIENT KEY DERIVATION =====")
-        print(f"Using password: '{self.password}'")
-        
         # Derive 32-byte key from password using SHA-256
         self.encryption_key = hashlib.sha256(self.password.encode()).digest()
-        
-        print("===== END CLIENT KEY DERIVATION =====\n")
 
 
     def run(self):
