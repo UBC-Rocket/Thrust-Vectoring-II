@@ -29,8 +29,7 @@ void PID_Config(){
 
 void PID_Loop(){
     currentData.update_values();
-    // currentData.print_values();
-    // currentData.save_values();
+    currentData.save_values();
 
     // Update PID input values with current IMU data
     inputX = currentData.getGyro().x; // X-axis (pitch) stabilization

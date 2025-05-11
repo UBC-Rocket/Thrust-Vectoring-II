@@ -20,6 +20,7 @@ bool handleError(WifiStatus error) {
     return false;
 }
 
+
 String getStatusMessage(WifiStatus status) {
     switch(status) {
         case WifiStatus::SUCCESS: return "Operation successful";
@@ -33,8 +34,8 @@ String getStatusMessage(WifiStatus status) {
     }
 }
 
+
 bool initWifiAccessPoint() {
-    Serial.println("\n-----WIFI SETUP START-----");
     Serial.println("Setting up Wi-Fi Access Point...");
     
     // Generate random encryption key
@@ -68,7 +69,6 @@ bool initWifiAccessPoint() {
     IPAddress IP = WiFi.softAPIP();
     Serial.print("Access Point IP: ");
     Serial.println(IP);
-    Serial.println("-----WIFI SETUP COMPLETE-----\n");
     return true;
 }
 
@@ -76,16 +76,8 @@ bool initWifiAccessPoint() {
 bool generateSecurityParameters() {
     // Use password to generate key instead of random bytes
     // Password is already defined as "UBCRocket_TVR_2024!"
-    Serial.println("\n===== SERVER KEY DERIVATION =====");
     Serial.print("Using password: ");
     Serial.println(password);
-
-    Serial.print("Password bytes in hex: ");
-    for (size_t i = 0; i < strlen(password); i++) {
-        Serial.print(password[i], HEX);
-        Serial.print(" ");
-    }
-    Serial.println();
 
     // Initialize the hash context
     mbedtls_md_context_t ctx;
@@ -100,54 +92,23 @@ bool generateSecurityParameters() {
     mbedtls_md_finish(&ctx, encryptionKey);
     mbedtls_md_free(&ctx);
     
-    Serial.print("Derived key (full hex): ");
-    for (int i = 0; i < KEY_SIZE; i++) {
-        Serial.print(encryptionKey[i], HEX);
-        Serial.print(" ");
-    }
-    Serial.println();
-    Serial.println("===== END SERVER KEY DERIVATION =====\n");
-    
     return true;
 }
 
 
 bool authenticateClient(WiFiClient& client) {
-    Serial.println("\n===== SERVER AUTH DIAGNOSTICS =====");
     Serial.print("Using password: ");
     Serial.println(password);
-    
-    Serial.print("Encryption key (first 8 bytes): ");
-    for (int i = 0; i < 8; i++) {
-        Serial.print(encryptionKey[i], HEX);
-        Serial.print(" ");
-    }
-    Serial.println();
-    
-    Serial.println("\n----- AUTH START -----");
     
     // Generate new challenge nonce
     Serial.println("Generating nonce...");
     for (int i = 0; i < NONCE_SIZE; i++) {
         currentNonce[i] = (uint8_t)esp_random();
     }
-
-    Serial.print("Generated nonce (full hex dump): ");
-    for (int i = 0; i < NONCE_SIZE; i++) {
-        Serial.print(currentNonce[i], HEX);
-        Serial.print(" ");
-    }
-    Serial.println();
-    
     
     // Send challenge
     Serial.println("Sending nonce challenge to client...");
     int bytesSent = client.write(currentNonce, NONCE_SIZE);
-    Serial.print("Attempted to send ");
-    Serial.print(NONCE_SIZE);
-    Serial.print(" bytes, actually sent ");
-    Serial.print(bytesSent);
-    Serial.println(" bytes");
     if(bytesSent != NONCE_SIZE) {
         Serial.println("Failed to send complete nonce");
         handleError(WifiStatus::AUTH_FAILED);
@@ -172,7 +133,6 @@ bool authenticateClient(WiFiClient& client) {
         Serial.print(millis() - startTime);
         Serial.println(" ms");
         handleError(WifiStatus::TIMEOUT);
-        Serial.println("===== END SERVER AUTH DIAGNOSTICS =====");
         return false;
     }
     Serial.print("Received response after ");
@@ -187,39 +147,9 @@ bool authenticateClient(WiFiClient& client) {
         handleError(WifiStatus::AUTH_FAILED);
         return false;
     }
-
-    Serial.print("Received HMAC (full hex dump): ");
-    for (int i = 0; i < 32; i++) {
-        Serial.print(receivedHMAC[i], HEX);
-        Serial.print(" ");
-    }
-    Serial.println();
-    
-    // Print received HMAC (first few bytes)
-    Serial.print("Received HMAC (first 4 bytes): ");
-    for (int i = 0; i < 4; i++) {
-        Serial.print(receivedHMAC[i], HEX);
-        Serial.print(" ");
-    }
-    Serial.println();
     
     uint8_t expectedHMAC[32];
     generateHMAC(currentNonce, NONCE_SIZE, expectedHMAC);
-
-    Serial.print("Expected HMAC (full hex dump): ");
-    for (int i = 0; i < 32; i++) {
-        Serial.print(expectedHMAC[i], HEX);
-        Serial.print(" ");
-    }
-    Serial.println();
-    
-    // Print expected HMAC (first few bytes)
-    Serial.print("Expected HMAC (first 4 bytes): ");
-    for (int i = 0; i < 4; i++) {
-        Serial.print(expectedHMAC[i], HEX);
-        Serial.print(" ");
-    }
-    Serial.println();
     
     bool result = (memcmp(receivedHMAC, expectedHMAC, 32) == 0);
     Serial.print("HMAC comparison result: ");
@@ -238,31 +168,14 @@ bool authenticateClient(WiFiClient& client) {
             }
         }
     }
-    Serial.println("----- AUTH END -----\n");
-    Serial.println("===== END SERVER AUTH DIAGNOSTICS =====\n");
     
     return result;
 }
 
+
 void generateHMAC(const uint8_t* data, size_t data_len, uint8_t* hmac) {
-    Serial.println("\n===== SERVER HMAC GENERATION =====");
     Serial.print("Generating HMAC for data of length: ");
     Serial.println(data_len);
-
-    Serial.print("Data hex dump: ");
-    for (size_t i = 0; i < data_len; i++) {
-        Serial.print(data[i], HEX);
-        Serial.print(" ");
-    }
-    Serial.println();
-    
-    Serial.print("Key hex dump (first 16 bytes): ");
-    for (int i = 0; i < 16; i++) {
-        Serial.print(encryptionKey[i], HEX);
-        Serial.print(" ");
-    }
-    Serial.println();
-
 
     mbedtls_md_context_t ctx;
     mbedtls_md_init(&ctx);
@@ -289,16 +202,8 @@ void generateHMAC(const uint8_t* data, size_t data_len, uint8_t* hmac) {
     }
     
     mbedtls_md_free(&ctx);
-
-    Serial.print("HMAC result (full hex dump): ");
-    for (int i = 0; i < 32; i++) {
-        Serial.print(hmac[i], HEX);
-        Serial.print(" ");
-    }
-    Serial.println();
-    
-    Serial.println("===== END SERVER HMAC GENERATION =====");
 }
+
 
 void sendAcknowledgment(WiFiClient& client, CommandAck ack) {
     // Create JSON acknowledgment
@@ -324,6 +229,7 @@ void sendAcknowledgment(WiFiClient& client, CommandAck ack) {
         Serial.println("Failed to encrypt acknowledgment");
     }
 }
+
 
 bool encryptData(const uint8_t* input, size_t input_len, uint8_t* output, size_t* output_len) {
     Serial.println("Encrypting data...");
@@ -356,6 +262,7 @@ bool encryptData(const uint8_t* input, size_t input_len, uint8_t* output, size_t
     Serial.println("Encryption successful");
     return true;
 }
+
 
 bool decryptData(const uint8_t* input, size_t input_len, uint8_t* output, size_t* output_len) {
     Serial.println("Decrypting data...");
@@ -392,6 +299,7 @@ bool decryptData(const uint8_t* input, size_t input_len, uint8_t* output, size_t
     Serial.println("Decryption successful");
     return true;
 }
+
 
 bool verifyHMAC(const uint8_t* data, size_t data_len, const uint8_t* hmac) {
     uint8_t calculatedHMAC[32];
@@ -443,7 +351,6 @@ void remoteControl(void (*beginFlight)()) {
                                 client.println("Connection: close");
                                 client.println();
                                 client.println("File not found");
-                                
                                 Serial.println("404 response sent");
                                 break;
                             }
