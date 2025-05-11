@@ -1,4 +1,4 @@
-// flightdata.h
+// include/flightdata.h
 #ifndef FLIGHTDATA_H
 #define FLIGHTDATA_H
 
@@ -29,7 +29,6 @@ class FlightData
         float getTemp() const;
         
         void update_values();
-        void print_values();
         void print_values_arduino();
         void save_values();
         void serve_csv(WiFiClient& client);
@@ -41,6 +40,5 @@ extern FlightData currentData;
 extern unsigned long startTime;
 
 void initialize_csv();
-void printVector(const char* label, sensors_vec_t vec);
 
 #endif // FLIGHTDATA_H

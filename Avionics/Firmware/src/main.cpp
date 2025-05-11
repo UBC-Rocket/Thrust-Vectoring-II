@@ -1,9 +1,4 @@
-/*
-* To download the data as a .csv file:
-*     1. Wait for the flight to be finished (all data is collected)
-*     2. Connect to the ESP32's WiFi network (name is TVR and password is 12345678)
-*     3. On a web browser go to http://192.168.4.1/download
-*/
+// src/main.cpp
 
 #include "main.h"
 
@@ -23,14 +18,17 @@ const int NMOS_PIN = 25;
 bool pmosState = true;
 bool nmosState = false;
 
+unsigned long ignitionTime = 0;
+const unsigned long IGNITION_DURATION = 2000; // 2 seconds for ignition
+bool ignitionActive = false;
+
+
 void setup() {
   Wire.begin(21, 22); // SDA on GPIO 21, SCL on GPIO 22   
   Serial.begin(115200);
   while(!Serial) {}
 
-  Serial.println("\n\n==========================================");
   Serial.println("STARTING WIFI INITIALIZATION");
-  Serial.println("==========================================");
   bool wifiResult = initWifiAccessPoint();
   Serial.println("WiFi AP Initialization result: " + String(wifiResult ? "SUCCESS" : "FAILED"));
   
@@ -74,7 +72,18 @@ void setup() {
   startTime = millis();
 }
 
+
 void loop() {
+  if (ignitionActive && (millis() - ignitionTime >= IGNITION_DURATION)) {
+      // Turn off ignition circuit
+      pmosState = true;   // OFF for PMOS
+      nmosState = false;  // OFF for NMOS
+      digitalWrite(PMOS_PIN, pmosState);
+      digitalWrite(NMOS_PIN, nmosState);
+      ignitionActive = false;
+      Serial.println("Ignition circuit turned off automatically");
+  }
+
   if ((WAIT_FOR_EMATCH && started && !done) || (!WAIT_FOR_EMATCH && !done)) {
     PID_Loop();
   }
@@ -86,14 +95,16 @@ void loop() {
   delay(10);
 }
 
+
 // Flip PMOS and NMOS states for ignition control, begin gimbal control and data logging
 void beginFlight() {
-
   Serial.println("CONNECTED");
   started = true;
-  pmosState = !pmosState;  // Toggle PMOS state
-  nmosState = !nmosState;  // Toggle NMOS state
+  pmosState = false;  // ON for PMOS (active low)
+  nmosState = true;   // ON for NMOS (active high)
   digitalWrite(PMOS_PIN, pmosState);
   digitalWrite(NMOS_PIN, nmosState);
-
+  ignitionTime = millis();
+  ignitionActive = true;
+  Serial.println("Ignition circuit activated");
 }

@@ -1,4 +1,4 @@
-// flightdata.cpp
+// src/flightdata.cpp
 #include "flightdata.h"
 #include "main.h"
 #include "IMU_Control.h"
@@ -58,33 +58,10 @@ void FlightData::update_values() {
   this->gyroscope.x = gyro.gyro.y - gyro_y_offset;
 }
 
-void FlightData::print_values() {
-  // Serial.println("\nTime: "); Serial.print(time);
-  // printVector(" - Accelerometer: ", acceleration);
-  // printVector("Gyroscope: ", gyroscope);  
-  // printVector("Magnetometer: ", magnetic);
-  // Serial.print("Temperature: "); Serial.print(temperature, 2);
-}
-
-void FlightData::print_values_arduino() {
-  Serial.print(acceleration.x);
-  Serial.print("\t");
-  Serial.print(acceleration.y);
-  Serial.print("\t");
-  Serial.println(acceleration.z);
-}
-
-void printVector(const char* label, sensors_vec_t vec) {
-  // Serial.print(label);
-  // Serial.print("x = "); Serial.print(vec.x, 2);
-  // Serial.print(", y = "); Serial.print(vec.y, 2);
-  // Serial.print(", z = "); Serial.print(vec.z, 2);
-  // Serial.println("\n");
-}
 
 void FlightData::save_values() {
   if (!file) {
-    // Serial.println("File is not open, can't save data");
+    Serial.println("File is not open, can't save data");
     return;
   }
 

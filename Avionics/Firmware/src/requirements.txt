@@ -1,2 +1,0 @@
-# System requirements:
-# - Python Tkinter (install via: brew install python-tk@3.13 on macOS)
