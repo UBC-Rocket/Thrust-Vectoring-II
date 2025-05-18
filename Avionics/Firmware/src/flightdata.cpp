@@ -85,14 +85,14 @@ void FlightData::save_values() {
     
   // Write the buffer to file
   if (bytesWritten > 0 && bytesWritten < sizeof(buffer)) {
-    file.write(buffer, bytesWritten);
+    file.write((const uint8_t*)buffer, bytesWritten);
   } else {
     Serial.println("Error formatting CSV data");
   }
 }
 
 
-void initialize_csv() {
+bool initialize_csv() {
   file = SPIFFS.open("/data.csv", FILE_WRITE);
   if (!file) {
       Serial.println("Failed to open file for initializing. Formatting...");

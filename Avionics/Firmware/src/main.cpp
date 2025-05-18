@@ -19,45 +19,28 @@ bool pmosState = true;
 bool nmosState = false;
 
 unsigned long ignitionTime = 0;
-const unsigned long IGNITION_DURATION = 1000; // 2 seconds for ignition
+const unsigned long IGNITION_DURATION = 1000; // 1 second for ignition
 bool ignitionActive = false;
 
-const unsigned long RECOVERY_DURATION = 15000;
-
-
-enum FlightPhase {
-  IDLE,               // Initial state - waiting for command
-  IGNITION,           // Ignition command sent, waiting for thrust
-  POWERED_FLIGHT,     // Motor burning, rocket accelerating
-  COASTING,           // Motor burnout, still ascending
-  APOGEE,             // Highest point reached, brief moment of near-zero acceleration
-  RECOVERY, // Parachute deployment initiated
-  LANDED              // On the ground, flight complete
-};
+const unsigned long RECOVERY_DURATION = 30000;
 
 
 // Flight detection thresholds
 // These values are derived from expected flight parameters of this specific rocket
 // Acceleration thresholds in m/s²
-const float LIFTOFF_ACCEL_THRESHOLD = 12.0;  // Minimum acceleration to confirm liftoff
+const float LIFTOFF_ACCEL_THRESHOLD = 10.0;  // Minimum acceleration to confirm liftoff
 const float LIFTOFF_ACCEL_INCREMENT = 0.5;   // Minimum increment to count as acceleration increase
-const float LIFTOFF_CONFIRM_COUNT = 3;       // Number of consecutive increases required
+const float LIFTOFF_CONFIRM_COUNT = 6;       // Number of consecutive increases required
 
 // Burnout detection parameters
-const float BURNOUT_MAX_ACCEL_THRESHOLD = 15.0;  // Minimum peak acceleration during powered flight
+const float BURNOUT_MAX_ACCEL_THRESHOLD = 50.0;  // Minimum peak acceleration during powered flight
 const float BURNOUT_CURRENT_ACCEL_THRESHOLD = 12.0;  // Maximum current acceleration to consider burnout
 const float BURNOUT_REDUCTION_FACTOR = 0.5;  // Minimum ratio of current/max acceleration
-
-const unsigned long PARACHUTE_DEPLOY_CONFIRM_TIME = 1000; // ms
-const unsigned long PARACHUTE_DEPLOY_TIMEOUT = 3000;     // ms maximum wait time
-
-
 
 FlightPhase currentPhase = IDLE;
 unsigned long phaseStartTime = 0;
 
 bool parachuteDeployed = false;
-const int PARACHUTE_PIN = 12;  // TODO set to actual pin
 
 
 // Helper function to get string representation of flight phase
@@ -102,7 +85,6 @@ void changeFlightPhase(FlightPhase newPhase) {
       validTransition = (newPhase == LANDED);
       break;
     case LANDED:
-      // No valid transitions from LANDED
       validTransition = false;
       break;
     default:
@@ -133,26 +115,16 @@ void changeFlightPhase(FlightPhase newPhase) {
 }
 
 
-// Deploy parachute function
 void deployParachute() {
   if (!parachuteDeployed) {
       Serial.println("Deploying parachute...");
-      
-      // In future implementation: Activate parachute deployment mechanism
-      // For now, just print to serial
-      // pinMode(PARACHUTE_PIN, OUTPUT);
-      // digitalWrite(PARACHUTE_PIN, HIGH);
-      
-      // Set deployment flag
-      parachuteDeployed = true;
-      
-      Serial.println("Parachute deployment signal sent");
   }
 }
 
 
 // Detection functions for state transitions
 void detectIgnition() {
+  Serial.print("Detecting Ignition");
   // Calculate acceleration magnitude from all axes
   float accelMagnitude = sqrt(
       pow(currentData.getAccel().x, 2) + 
@@ -192,7 +164,8 @@ void detectIgnition() {
 
 
 void detectBurnout() {
-  // Get vertical acceleration (assuming Z is vertical axis)
+  Serial.print("Detecting Burnout");
+  // Get vertical acceleration
   float verticalAccel = currentData.getAccel().z;
   
   // Use a small window to smooth noise
@@ -235,6 +208,7 @@ void detectBurnout() {
 
 
 void detectApogee() {
+  Serial.print("Detecting Apogee");
   // Simply wait 3 seconds after entering coasting phase
   if (millis() - phaseStartTime >= 3000) {  // 3 seconds
       Serial.println("Apogee timer elapsed (8 seconds) - assuming apogee reached");
@@ -280,6 +254,7 @@ void processStateMachine() {
           break;
           
       case APOGEE:
+          Serial.print("Currently in Apogee state");
           // Deploy parachute
           if (millis() - phaseStartTime >= 3000) {  // 3 seconds
               Serial.println("Deploying parachute 3 seconds after apogee");
@@ -288,16 +263,18 @@ void processStateMachine() {
           }
           break;
           
-          case RECOVERY:
-            // simpler time-based approach
-            if (millis() - phaseStartTime >= RECOVERY_DURATION) {
-                Serial.println("Recovery duration complete, assuming landed");
-                changeFlightPhase(LANDED);
-                done = true;  // Signal flight completion
-            }
-            break;
+      case RECOVERY:
+          Serial.print("Currently in Recovery state");
+          // simpler time-based approach
+          if (millis() - phaseStartTime >= RECOVERY_DURATION) {
+              Serial.println("Recovery duration complete, assuming landed");
+              changeFlightPhase(LANDED);
+              done = true;  // Signal flight completion
+          }
+          break;
           
       case LANDED:
+          Serial.print("Currently in Landed state");
           // Flight complete - maintain this state
           break;
   }
