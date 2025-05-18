@@ -84,10 +84,7 @@ class ESP32GUI:
 
     def generate_hmac(self, data):
         print(f"\n===== CLIENT HMAC GENERATION =====")
-        print(f"Generating HMAC for data of length: {len(data)}")
-        
         hmac_result = hmac.new(self.encryption_key, data, hashlib.sha256).digest()
-        print(f"HMAC result length: {len(hmac_result)}")
         print(f"===== END CLIENT HMAC GENERATION =====\n")
 
         return hmac_result
@@ -101,16 +98,12 @@ class ESP32GUI:
             if not nonce:
                 print("Failed to receive nonce")
                 return False
-            print(f"Received nonce of length: {len(nonce)}")
             
             # Generate HMAC response
             print("Generating HMAC response...")
             hmac_response = self.generate_hmac(nonce)
             
-            # Send response
-            print(f"Sending HMAC of length {len(hmac_response)} bytes")
-            send_bytes = sock.send(hmac_response)
-            print(f"Actually sent {send_bytes} bytes of HMAC")
+            sock.send(hmac_response)
             
             self.root.after(0, lambda: self.auth_label.config(
                 text="Authentication: Authenticated", fg="green"))

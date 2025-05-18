@@ -55,11 +55,6 @@ bool initWifiAccessPoint() {
     }
     Serial.println("Encryption initialized successfully");
     
-    // Start AP with WPA2
-    Serial.print("Creating AP with SSID: ");
-    Serial.println(ssid);
-    
-    // Change the last parameter to 0 to make it visible (not hidden)
     if(!WiFi.softAP(ssid, password, 1, 0)) {
         Serial.println("Failed to create access point");
         handleError(WifiStatus::INIT_FAILED);
@@ -74,7 +69,7 @@ bool initWifiAccessPoint() {
 
 
 bool generateSecurityParameters() {
-    // Use password to generate key instead of random bytes
+    // Use password to generate key
     // Password is already defined as "UBCRocket_TVR_2024!"
     Serial.print("Generating encryption key from password...");
 
@@ -112,11 +107,6 @@ bool authenticateClient(WiFiClient& client) {
     Serial.println("Nonce sent successfully");
 
     Serial.println("Starting wait for HMAC response...");
-    Serial.print("Current millis: ");
-    Serial.println(millis());
-    
-    // Wait for response with timeout
-    Serial.println("Waiting for HMAC response...");
     unsigned long startTime = millis();
     unsigned long currentTime;
     bool timedOut = false;
@@ -153,7 +143,6 @@ bool authenticateClient(WiFiClient& client) {
     
     bool result = (memcmp(receivedHMAC, expectedHMAC, 32) == 0);
     Serial.print("HMAC comparison result: ");
-    Serial.println(result ? "MATCH" : "MISMATCH");
     Serial.println(result ? "HMAC authentication SUCCESS" : "HMAC authentication FAILED");
     if (!result) {
         for (int i = 0; i < 32; i++) {
@@ -211,9 +200,6 @@ void sendAcknowledgment(WiFiClient& client, CommandAck ack) {
     jsonAck += "\"timestamp\":" + String(ack.timestamp) + ",";
     jsonAck += "\"status\":\"" + getStatusMessage(ack.status) + "\",";
     jsonAck += "\"message\":\"" + ack.message + "\"}";
-    
-    Serial.print("JSON ACK: ");
-    Serial.println(jsonAck);
     
     // Encrypt acknowledgment
     uint8_t encryptedAck[512];
@@ -278,8 +264,6 @@ bool decryptData(const uint8_t* input, size_t input_len, uint8_t* output, size_t
     }
     
     *output_len = input_len - padding;
-    Serial.print("Decrypted length: ");
-    Serial.println(*output_len);
     
     Serial.println("Decryption successful");
     return true;

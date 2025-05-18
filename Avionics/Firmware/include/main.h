@@ -10,4 +10,19 @@
 
 void beginFlight();
 
+#ifndef MAIN_H_FLIGHT_PHASE
+#define MAIN_H_FLIGHT_PHASE
+
+enum FlightPhase {
+  IDLE,
+  IGNITION,
+  POWERED_FLIGHT,
+  COASTING,
+  APOGEE,
+  RECOVERY,
+  LANDED
+};
+
+extern FlightPhase currentPhase;
+#endif // MAIN_H_FLIGHT_PHASE
 #endif //MAIN_H
