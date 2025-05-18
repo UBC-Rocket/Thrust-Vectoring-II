@@ -64,9 +64,24 @@ void setup() {
   if (!SPIFFS.begin()) {
     Serial.println("Failed to mount SPIFFS. Formatting...");
     
+    // Add diagnostic info
+    Serial.print("Total SPIFFS space: ");
+    Serial.print(SPIFFS.totalBytes());
+    Serial.println(" bytes");
+    Serial.print("Used SPIFFS space: ");
+    Serial.print(SPIFFS.usedBytes());
+    Serial.println(" bytes");
+    
     // Format SPIFFS
     if (SPIFFS.format()) {
       Serial.println("SPIFFS formatted successfully.");
+      // Print space info after formatting
+      Serial.print("Post-format total space: ");
+      Serial.print(SPIFFS.totalBytes());
+      Serial.println(" bytes");
+      Serial.print("Post-format used space: ");
+      Serial.print(SPIFFS.usedBytes());
+      Serial.println(" bytes");
     } else {
       Serial.println("Failed to format SPIFFS. Check partition configuration.");
       return; // Exit setup if formatting fails

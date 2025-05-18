@@ -12,6 +12,7 @@ unsigned long startTime = 0;
 FlightData currentData;
 extern bool done; // Declared in Wifi_Control.cpp
 
+
 FlightData::FlightData() {
     acceleration = {0.0, 0.0, 0.0};
     gyroscope = {0.0, 0.0, 0.0};
@@ -20,17 +21,21 @@ FlightData::FlightData() {
     time = 0;
 }
 
+
 sensors_vec_t FlightData::getAccel() const {
     return acceleration;
 }
+
 
 sensors_vec_t FlightData::getGyro() const {
     return gyroscope;
 }
 
+
 sensors_vec_t FlightData::getMag() const {
     return magnetic;
 }
+
 
 float FlightData::getTemp() const {
     return temperature;
@@ -93,52 +98,89 @@ void FlightData::save_values() {
 
 
 bool initialize_csv() {
+  Serial.println("Starting CSV initialization...");
+  
   file = SPIFFS.open("/data.csv", FILE_WRITE);
   if (!file) {
-      Serial.println("Failed to open file for initializing. Formatting...");
-      SPIFFS.format();
+    Serial.println("Failed to open file for initializing. Formatting...");
+    SPIFFS.format();
 
-      if (!SPIFFS.begin()) {
-        Serial.println("Failed to mount SPIFFS during formatting.");
-        return false;
-      }
-      
-      // Try to open the file again after formatting
-      file = SPIFFS.open("/data.csv", FILE_WRITE);
+    if (!SPIFFS.begin()) {
+      Serial.println("Failed to mount SPIFFS during formatting.");
+      return false;
+    }
+    
+    // Try to open the file again after formatting
+    file = SPIFFS.open("/data.csv", FILE_WRITE);
 
-      if (!file) {
-        Serial.println("Failed to open file for initializing. Terminating...");
-        return false;
-      }
+    if (!file) {
+      Serial.println("Failed to open file for initializing. Terminating...");
+      return false;
+    }
   }
 
   Serial.println("Opened file for initializing");
-
-  bool headerWriteSuccess = true;
-  headerWriteSuccess &= file.print("Time (ms)") && file.print(",");
-  headerWriteSuccess &= file.print("Accel x (+/- 0.1 m/s^2)") && file.print(",");
-  headerWriteSuccess &= file.print("Accel y (+/- 0.1 m/s^2)") && file.print(",");
-  headerWriteSuccess &= file.print("Accel z (+/- 0.1 m/s^2)") && file.print(",");
-  headerWriteSuccess &= file.print("Gyro x (+/- 0.2 rad/s)") && file.print(",");
-  headerWriteSuccess &= file.print("Gyro y (+/- 0.2 rad/s)") && file.print(",");
-  headerWriteSuccess &= file.print("Gyro z (+/- 0.2 rad/s)") && file.print(",");
-  headerWriteSuccess &= file.print("Mag x (uT)") && file.print(",");
-  headerWriteSuccess &= file.print("Mag y (uT)") && file.print(",");
-  headerWriteSuccess &= file.print("Mag z (uT)") && file.print(",");
-  headerWriteSuccess &= file.print("Temp (C)") && file.print(",");
-  headerWriteSuccess &= file.println("Flight Phase");
-
-  if (!headerWriteSuccess) {
-    Serial.println("Failed to write CSV header");
+  
+  // Test file with a small write first
+  if (file.println("CSV Header Test")) {
+    Serial.println("Test write successful");
+  } else {
+    Serial.println("ERROR: Test write failed");
     file.close();
     return false;
   }
+  
+  // Create header string first to avoid multiple writes
+  String header = "Time (ms),Accel x (+/- 0.1 m/s^2),Accel y (+/- 0.1 m/s^2),Accel z (+/- 0.1 m/s^2),";
+  header += "Gyro x (+/- 0.2 rad/s),Gyro y (+/- 0.2 rad/s),Gyro z (+/- 0.2 rad/s),";
+  header += "Mag x (uT),Mag y (uT),Mag z (uT),Temp (C),Flight Phase";
+  
+  // Log header length
+  Serial.print("Header length: ");
+  Serial.print(header.length());
+  Serial.println(" bytes");
+  
+  // Try to write the entire header at once
+  size_t bytesWritten = file.println(header);
+  
+  if (bytesWritten == 0) {
+    Serial.println("Failed to write CSV header (0 bytes written)");
+    // Try to diagnose the issue
+    Serial.print("File size: ");
+    Serial.print(file.size());
+    Serial.println(" bytes");
+    Serial.print("File position: ");
+    Serial.print(file.position());
+    Serial.println(" bytes");
+    Serial.print("SPIFFS free space: ");
+    Serial.print(SPIFFS.totalBytes() - SPIFFS.usedBytes());
+    Serial.println(" bytes");
+    
+    file.close();
+    return false;
+  }
+  
+  Serial.print("Successfully wrote header (");
+  Serial.print(bytesWritten);
+  Serial.println(" bytes)");
 
   file.close();
   file = SPIFFS.open("/data.csv", FILE_APPEND);
   
   if (!file) {
     Serial.println("Failed to reopen file for writing");
+    return false;
+  }
+  
+  // Verify file is valid and writable
+  if (!file.size()) {
+    Serial.println("Warning: File size is 0 after reopening");
+  }
+  
+  // Test append operation
+  if (!file.println("# Test append line")) {
+    Serial.println("Warning: Test append write failed");
+    file.close();
     return false;
   }
   
