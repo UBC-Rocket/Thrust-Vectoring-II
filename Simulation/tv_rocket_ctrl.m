@@ -1,10 +1,11 @@
-clc, clear all;
 
-rocket_file = 'rocket_data.csv';
 
+%note you must open it first in excel and save it
+rocket_file = 'funnys.csv';
 rocket_data = readtable(rocket_file);
 
 data.time_raw = rocket_data.x_Time_s_;
+
 NaN_idx = find(isnan(data.time_raw));
 launch_idx = NaN_idx(4)+1; % First time index of when the rocket got launched
 apogee_idx = NaN_idx(5)-1;
@@ -116,5 +117,5 @@ hold on
 grid on
 
 plot(data.time, air_temp.Data)
-
+%}
 
