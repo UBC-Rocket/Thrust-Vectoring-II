@@ -95,24 +95,26 @@ void setup() {
     Serial.println("WARNING: Data logging initialization failed");
   }
   startTime = millis();
+
+  currentPhase == POWERED_FLIGHT;
 }
 
 void loop() {
-  // Process state machine transitions first
-  processStateMachine();
+  // // Process state machine transitions first
+  // processStateMachine();
   
-  // Apply appropriate control based on current state
-  // Only run PID control during active flight phases that need it
+  // // Apply appropriate control based on current state
+  // // Only run PID control during active flight phases that need it
   if (currentPhase == IGNITION || currentPhase == POWERED_FLIGHT || 
       currentPhase == COASTING) {
       PID_Loop();
   }
   
-  // Process ignition circuit safety shutdown
-  handleIgnitionSafety();
+  // // Process ignition circuit safety shutdown
+  // handleIgnitionSafety();
   
-  // Handle communication and other background tasks
-  remoteControl(beginFlight);
+  // // Handle communication and other background tasks
+  // remoteControl(beginFlight);
   yield();
   delay(10);
 }
