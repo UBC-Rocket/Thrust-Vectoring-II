@@ -21,6 +21,7 @@ extern FlightData currentData;
 extern bool done;
 extern FlightPhase currentPhase;
 
+
 // Helper function to get string representation of flight phase
 const char* getPhaseString(FlightPhase phase) {
   switch(phase) {
@@ -34,6 +35,7 @@ const char* getPhaseString(FlightPhase phase) {
       default: return "UNKNOWN";
   }
 }
+
 
 // Function to change flight phase with logging
 void changeFlightPhase(FlightPhase newPhase) {
@@ -91,6 +93,7 @@ void changeFlightPhase(FlightPhase newPhase) {
   Serial.println(getPhaseString(newPhase));
 }
 
+
 void deployParachute() {
   if (!parachuteDeployed) {
       Serial.println("Deploying parachute...");
@@ -98,87 +101,100 @@ void deployParachute() {
   }
 }
 
+
 // Detection functions for state transitions
 void detectIgnition() {
-  Serial.print("Detecting Ignition");
-  // Calculate acceleration magnitude from all axes
-  float accelMagnitude = sqrt(
-      pow(currentData.getAccel().x, 2) + 
-      pow(currentData.getAccel().y, 2) + 
-      pow(currentData.getAccel().z, 2)
-  );
-  
-  // Track if acceleration is increasing (sign of successful ignition)
-  static float prevMaxAccel = 0;
-  static int accelIncreaseCount = 0;
-  
-  if (accelMagnitude > prevMaxAccel + 0.5) {  // 0.5 m/s² threshold for increase
-      accelIncreaseCount++;
-      prevMaxAccel = accelMagnitude;
-  }
-  
-  // Transition based on sufficient acceleration AND sustained increase
-  if (accelMagnitude > LIFTOFF_ACCEL_THRESHOLD && accelIncreaseCount >= LIFTOFF_CONFIRM_COUNT) {
-      Serial.print("Lift-off detected with acceleration: ");
-      Serial.print(accelMagnitude);
-      Serial.println(" m/s²");
-      
-      // Reset detection variables for future use
-      prevMaxAccel = 0;
-      accelIncreaseCount = 0;
-      
-      changeFlightPhase(POWERED_FLIGHT);
-  }
-  
-  // Safety timeout for failed ignition
-  if (millis() - phaseStartTime > 5000) {
-      Serial.println("ERROR: No significant acceleration detected after ignition timeout");
-      // For now, just go back to IDLE state
-      changeFlightPhase(IDLE);
-  }
+    // TODO DELETER AFTER HOLD-DOWN
+    changeFlightPhase(POWERED_FLIGHT);
+
+
+    // TODO UNCOMMENT AFTER HOLD-DOWN
+    // Serial.print("Detecting Ignition");
+    // // Calculate acceleration magnitude from all axes
+    // float accelMagnitude = sqrt(
+    //     pow(currentData.getAccel().x, 2) + 
+    //     pow(currentData.getAccel().y, 2) + 
+    //     pow(currentData.getAccel().z, 2)
+    // );
+    
+    // // Track if acceleration is increasing (sign of successful ignition)
+    // static float prevMaxAccel = 0;
+    // static int accelIncreaseCount = 0;
+    
+    // if (accelMagnitude > prevMaxAccel + 0.5) {  // 0.5 m/s² threshold for increase
+    //     accelIncreaseCount++;
+    //     prevMaxAccel = accelMagnitude;
+    // }
+    
+    // // Transition based on sufficient acceleration AND sustained increase
+    // if (accelMagnitude > LIFTOFF_ACCEL_THRESHOLD && accelIncreaseCount >= LIFTOFF_CONFIRM_COUNT) {
+    //     Serial.print("Lift-off detected with acceleration: ");
+    //     Serial.print(accelMagnitude);
+    //     Serial.println(" m/s²");
+        
+    //     // Reset detection variables for future use
+    //     prevMaxAccel = 0;
+    //     accelIncreaseCount = 0;
+        
+    //     changeFlightPhase(POWERED_FLIGHT);
+    // }
+    
+    // // Safety timeout for failed ignition
+    // if (millis() - phaseStartTime > 5000) {
+    //     Serial.println("ERROR: No significant acceleration detected after ignition timeout");
+    //     // For now, just go back to IDLE state
+    //     changeFlightPhase(IDLE);
+    // }
 }
 
+
 void detectBurnout() {
-  Serial.print("Detecting Burnout");
-  // Get vertical acceleration
-  float verticalAccel = currentData.getAccel().z;
-  
-  // Use a small window to smooth noise
-  static float accelWindow[5] = {0};
-  static int windowIndex = 0;
-  
-  // Update window with newest reading
-  accelWindow[windowIndex] = verticalAccel;
-  windowIndex = (windowIndex + 1) % 5;
-  
-  // Calculate average vertical acceleration
-  float avgVertAccel = 0;
-  for (int i = 0; i < 5; i++) {
-    avgVertAccel += accelWindow[i];
-  }
-  avgVertAccel /= 5.0;
-  
-  // Minimum powered flight duration safety check
-  if (millis() - phaseStartTime < 500) {
-    // Skip burnout detection during first 500ms of powered flight
+
+    // TODO DELETE AFTER HOLD-DOWN
     return;
-  }
+
+
+    // TODO UNCOMMET AFTER HOLD-DOWN
+//   Serial.print("Detecting Burnout");
+//   // Get vertical acceleration
+//   float verticalAccel = currentData.getAccel().z;
   
-  // Check if acceleration has transitioned to gravity-dominated
-  // -8.0 m/s² allows for some noise/calibration error but is clearly gravity-dominated
-  if (avgVertAccel < -8.0) {
-    Serial.print("Motor burnout detected. Vertical acceleration: ");
-    Serial.print(avgVertAccel);
-    Serial.println(" m/s² (gravity-dominated)");
+//   // Use a small window to smooth noise
+//   static float accelWindow[5] = {0};
+//   static int windowIndex = 0;
+  
+//   // Update window with newest reading
+//   accelWindow[windowIndex] = verticalAccel;
+//   windowIndex = (windowIndex + 1) % 5;
+  
+//   // Calculate average vertical acceleration
+//   float avgVertAccel = 0;
+//   for (int i = 0; i < 5; i++) {
+//     avgVertAccel += accelWindow[i];
+//   }
+//   avgVertAccel /= 5.0;
+  
+//   // Minimum powered flight duration safety check
+//   if (millis() - phaseStartTime < 500) {
+//     // Skip burnout detection during first 500ms of powered flight
+//     return;
+//   }
+  
+//   // Check if acceleration has transitioned to gravity-dominated
+//   // -8.0 m/s² allows for some noise/calibration error but is clearly gravity-dominated
+//   if (avgVertAccel < -8.0) {
+//     Serial.print("Motor burnout detected. Vertical acceleration: ");
+//     Serial.print(avgVertAccel);
+//     Serial.println(" m/s² (gravity-dominated)");
     
-    // Reset detection variables
-    windowIndex = 0;
-    for (int i = 0; i < 5; i++) {
-      accelWindow[i] = 0;
-    }
+//     // Reset detection variables
+//     windowIndex = 0;
+//     for (int i = 0; i < 5; i++) {
+//       accelWindow[i] = 0;
+//     }
     
-    changeFlightPhase(COASTING);
-  }
+//     changeFlightPhase(COASTING);
+//   }
 }
 
 void detectApogee() {
@@ -189,6 +205,7 @@ void detectApogee() {
       changeFlightPhase(APOGEE);
   }
 }
+
 
 // Process state machine transitions
 void processStateMachine() {
@@ -238,6 +255,7 @@ void processStateMachine() {
           break;
   }
 }
+
 
 // Initialize state machine
 void initStateMachine() {
