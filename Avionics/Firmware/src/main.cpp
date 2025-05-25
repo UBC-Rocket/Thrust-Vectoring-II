@@ -127,9 +127,6 @@ void beginFlight() {
   Serial.println("CONNECTED");
   
   if (currentPhase == IDLE) {
-      // Change to IGNITION state
-      changeFlightPhase(IGNITION);
-      
       // Turn ignition circuit ON
       pmosState = false;  // ON for PMOS (active low)
       nmosState = true;   // ON for NMOS (active high)

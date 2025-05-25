@@ -4,11 +4,7 @@
 
 // Flight detection thresholds
 const float LIFTOFF_ACCEL_THRESHOLD = 10.0;  // Minimum acceleration to confirm liftoff
-
-// Burnout detection parameters
-const float BURNOUT_MAX_ACCEL_THRESHOLD = 50.0;  // Minimum peak acceleration during powered flight
-const float BURNOUT_CURRENT_ACCEL_THRESHOLD = 12.0;  // Maximum current acceleration to consider burnout
-const float BURNOUT_REDUCTION_FACTOR = 0.5;  // Minimum ratio of current/max acceleration
+const float BURNOUT_GRAVITY_THRESHOLD = -8.0;
 
 const unsigned long RECOVERY_DURATION = 30000;
 
@@ -131,15 +127,21 @@ void detectIgnition() {
 void detectBurnout() {
   Serial.print("Detecting Burnout");
   // Get vertical acceleration
-  float verticalAccel = currentData.getAccel().z;
+  float verticalAccel = currentData.getAccel().x;
   
   // Use a small window to smooth noise
   static float accelWindow[5] = {0};
   static int windowIndex = 0;
+  static int samplesCollected = 0;
   
   // Update window with newest reading
   accelWindow[windowIndex] = verticalAccel;
   windowIndex = (windowIndex + 1) % 5;
+
+  if (samplesCollected < 5) {
+    samplesCollected++;
+    return;  // Don't make decisions until window is full
+  }
   
   // Calculate average vertical acceleration
   float avgVertAccel = 0;
@@ -150,17 +152,12 @@ void detectBurnout() {
   
   // Check if acceleration has transitioned to gravity-dominated
   // -8.0 m/s² allows for some noise/calibration error but is clearly gravity-dominated
-  if (avgVertAccel < -8.0) {
+  if (avgVertAccel < BURNOUT_GRAVITY_THRESHOLD) {
     Serial.print("Motor burnout detected. Vertical acceleration: ");
     Serial.print(avgVertAccel);
-    Serial.println(" m/s² (gravity-dominated)");
-    
-    // Reset detection variables
-    windowIndex = 0;
-    for (int i = 0; i < 5; i++) {
-      accelWindow[i] = 0;
-    }
-    
+    Serial.print(" m/s² (threshold: ");
+    Serial.print(BURNOUT_GRAVITY_THRESHOLD);
+    Serial.println(" m/s²)");
     changeFlightPhase(COASTING);
   }
 }
