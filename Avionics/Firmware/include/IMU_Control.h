@@ -20,7 +20,7 @@ extern float accel_z_offset;
 
 void configIMU();
 void calibrateGyroAccel();
-bool initIMU(int maxRetries = 3);
+bool initIMU(int maxRetries = 10);
 
 // Set low noise modes for both gyroscope and accelerometer
 void setLowNoiseMode();

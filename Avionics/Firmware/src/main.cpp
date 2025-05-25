@@ -38,7 +38,9 @@ void handleIgnitionSafety() {
 void setup() {
   Wire.begin(21, 22); // SDA on GPIO 21, SCL on GPIO 22   
   Serial.begin(115200);
-  while(!Serial) {}
+  while(!Serial) {
+    delay(100);
+  }
 
   Serial.println("STARTING WIFI INITIALIZATION");
   bool wifiResult = initWifiAccessPoint();
