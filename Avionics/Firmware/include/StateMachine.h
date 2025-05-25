@@ -9,8 +9,6 @@
 // These values are derived from expected flight parameters of this specific rocket
 // Acceleration thresholds in m/s²
 extern const float LIFTOFF_ACCEL_THRESHOLD;  // Minimum acceleration to confirm liftoff
-extern const float LIFTOFF_ACCEL_INCREMENT;   // Minimum increment to count as acceleration increase
-extern const float LIFTOFF_CONFIRM_COUNT;       // Number of consecutive increases required
 
 // Burnout detection parameters
 extern const float BURNOUT_MAX_ACCEL_THRESHOLD;  // Minimum peak acceleration during powered flight
@@ -35,6 +33,8 @@ void deployParachute();
 void detectIgnition();
 void detectBurnout();
 void detectApogee();
+void waitToOpenParachute();
+void waitToLand();
 
 // Process state machine transitions
 void processStateMachine();

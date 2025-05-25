@@ -80,14 +80,6 @@ void calibrateGyroAccel() {
     accel_x_offset /= num_samples;
     accel_y_offset /= num_samples;
     accel_z_offset /= num_samples;
-
-//     Serial.print("\nGyro offsets - X: "); Serial.print(gyro_x_offset);
-//     Serial.print(", Y: "); Serial.print(gyro_y_offset);
-//     Serial.print(", Z: "); Serial.println(gyro_z_offset);
-
-//     Serial.print("\nAccel offsets - X: "); Serial.print(accel_x_offset);
-//     Serial.print(", Y: "); Serial.print(accel_y_offset);
-//     Serial.print(", Z: "); Serial.println(accel_z_offset);
 }
 
 void setLowNoiseMode(){
