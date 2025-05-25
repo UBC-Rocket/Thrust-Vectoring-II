@@ -1,6 +1,6 @@
 // Firmware/src/PID_Control.cpp
-
 #include "PID_Control.h"
+#include "IMU_Control.h"  
 #include "flightdata.h"
 
 // Servo, PID Controller Constants and Variables for X and Y Axes
@@ -15,34 +15,41 @@ double setpointY = 0.0, inputY, outputY; // Y-axis PID variables
 PID pidX(&inputX, &outputX, &setpointX, Kp, Ki, Kd, DIRECT);
 PID pidY(&inputY, &outputY, &setpointY, Kp, Ki, Kd, DIRECT);
 
-
 void PID_Config(){
-  // Attach servos to GPIO pins with appropriate PWM parameters
-  gimbal_x.attach(16, 1000, 2000);
-  gimbal_y.attach(17, 1000, 2000);
-
-  // Initialize PID controllers and set output limits for stabilization
-  pidX.SetMode(AUTOMATIC);
-  pidY.SetMode(AUTOMATIC);
-  pidX.SetOutputLimits(-20, 20);
-  pidY.SetOutputLimits(-20, 20);
+    // Attach servos to GPIO pins with appropriate PWM parameters
+    gimbal_x.attach(16, 1000, 2000);
+    gimbal_y.attach(17, 1000, 2000);
+    
+    // Initialize PID controllers and set output limits for stabilization
+    pidX.SetMode(AUTOMATIC);
+    pidY.SetMode(AUTOMATIC);
+    pidX.SetOutputLimits(-20, 20);
+    pidY.SetOutputLimits(-20, 20);
 }
 
-
 void PID_Loop(){
+    // Update IMU data with Kalman filtering
+    updateIMUWithKalman();
+    
+    // Save current data for logging
     currentData.update_values();
     currentData.save_values();
-
-    // Update PID input values with current IMU data
-    inputX = currentData.getGyro().x; // X-axis (pitch) stabilization
+    
+    // Update PID input values with Kalman filtered angles instead of raw gyro rates
+    // Using filtered angles provides better stability than raw gyro rates
+    inputX = getFilteredPitch(); // X-axis (pitch) stabilization using Kalman filtered angle
+    Serial.print("X: ");
+    Serial.println(inputX);
     if (abs(inputX) > 0.01) {
-      pidX.Compute();   // Compute PID output for X-axis
-      gimbal_x.write(servoxinit + outputX * SERVO_MULTIPLIER); // Adjust gimbal X servo
+        pidX.Compute(); // Compute PID output for X-axis
+        gimbal_x.write(servoxinit + outputX * SERVO_MULTIPLIER); // Adjust gimbal X servo
     }
-
-    inputY = currentData.getGyro().y; // Y-axis (roll) stabilization
+    
+    inputY = getFilteredRoll(); // Y-axis (roll) stabilization using Kalman filtered angle
+    Serial.print("Y: ");
+    Serial.println(inputY);
     if (abs(inputY) > 0.01) {
-      pidY.Compute();   // Compute PID output for Y-axis
-      gimbal_y.write(servoyinit + outputY * SERVO_MULTIPLIER); // Adjust gimbal Y servo
+        pidY.Compute(); // Compute PID output for Y-axis
+        gimbal_y.write(servoyinit + outputY * SERVO_MULTIPLIER); // Adjust gimbal Y servo
     }
 }

@@ -1,9 +1,6 @@
-// Firmware/src/flightdata.cpp
 #include "flightdata.h"
 #include "main.h"
 #include "IMU_Control.h"
-
-extern Adafruit_ICM20948 imu;
 
 // Objects
 File file;
@@ -11,7 +8,6 @@ File file;
 unsigned long startTime = 0;
 FlightData currentData;
 extern bool done; // Declared in Wifi_Control.cpp
-
 
 FlightData::FlightData() {
     acceleration = {0.0, 0.0, 0.0};
@@ -21,26 +17,21 @@ FlightData::FlightData() {
     time = 0;
 }
 
-
 sensors_vec_t FlightData::getAccel() const {
     return acceleration;
 }
-
 
 sensors_vec_t FlightData::getGyro() const {
     return gyroscope;
 }
 
-
 sensors_vec_t FlightData::getMag() const {
     return magnetic;
 }
 
-
 float FlightData::getTemp() const {
     return temperature;
 }
-
 
 /*
 * Should add a check here to know when the flight is over (set done = true).
@@ -48,146 +39,154 @@ float FlightData::getTemp() const {
 * So that the csv file isn't unnecessarily massive with zeroes.
 */
 void FlightData::update_values() {
-  if (done) return;
-  time = millis() - startTime;
-  
-  sensors_event_t accel, gyro, mag, temp;
-  imu.getEvent(&accel, &gyro, &mag, &temp);
+    if (done) return;
+    time = millis() - startTime;
+    
+    // Get calibrated sensor data from the new IMU control system
+    float accel_x, accel_y, accel_z;
+    float gyro_x, gyro_y, gyro_z;
+    float mag_x, mag_y, mag_z;
+    
+    getCalibratedAcceleration(accel_x, accel_y, accel_z);
+    getCalibratedGyroscope(gyro_x, gyro_y, gyro_z);
+    getMagnetometer(mag_x, mag_y, mag_z);
+    this->temperature = getTemperature();
 
-  this->magnetic = mag.magnetic;
-  this->temperature = temp.temperature;
-
-  // Account for IMU rotation within rocket:
-  this->acceleration.z = accel.acceleration.x - accel_x_offset;
-  this->acceleration.y = accel.acceleration.z - accel_z_offset;
-  this->acceleration.x = accel.acceleration.y - accel_y_offset;
-  this->gyroscope.z = gyro.gyro.x - gyro_x_offset;
-  this->gyroscope.y = gyro.gyro.z - gyro_z_offset;
-  this->gyroscope.x = gyro.gyro.y - gyro_y_offset;
-  flightPhase = (int)currentPhase;
+    // Account for IMU rotation within rocket (maintain existing coordinate transformation):
+    this->acceleration.z = accel_x;  // Forward/backward becomes up/down
+    this->acceleration.y = accel_z;  // Up/down becomes left/right
+    this->acceleration.x = accel_y;  // Left/right becomes forward/backward
+    
+    this->gyroscope.z = gyro_x;
+    this->gyroscope.y = gyro_z;
+    this->gyroscope.x = gyro_y;
+    
+    // Magnetometer data (convert from µT to match expected units)
+    this->magnetic.x = mag_x;
+    this->magnetic.y = mag_y;
+    this->magnetic.z = mag_z;
+    
+    flightPhase = (int)currentPhase;
 }
-
 
 void FlightData::save_values() {
-  if (done) return;
-
-  if (!file) {
-    Serial.println("File is not open, can't save data");
-    return;
-  }
-
-  // Pre-allocate a buffer for CSV formatting
-  char buffer[256]; // Large enough for one CSV line
-  
-  // Format the entire line at once using snprintf
-  int bytesWritten = snprintf(buffer, sizeof(buffer),
-    "%lu,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%d\n",
-    time,
-    acceleration.x, acceleration.y, acceleration.z,
-    gyroscope.x, gyroscope.y, gyroscope.z,
-    magnetic.x, magnetic.y, magnetic.z,
-    temperature, flightPhase);
-    
-  // Write the buffer to file
-  if (bytesWritten > 0 && bytesWritten < sizeof(buffer)) {
-    file.write((const uint8_t*)buffer, bytesWritten);
-  } else {
-    Serial.println("Error formatting CSV data");
-  }
-}
-
-
-bool initialize_csv() {
-  Serial.println("Starting CSV initialization...");
-  
-  file = SPIFFS.open("/data.csv", FILE_WRITE);
-  if (!file) {
-    Serial.println("Failed to open file for initializing. Formatting...");
-    SPIFFS.format();
-
-    if (!SPIFFS.begin()) {
-      Serial.println("Failed to mount SPIFFS during formatting.");
-      return false;
-    }
-    
-    // Try to open the file again after formatting
-    file = SPIFFS.open("/data.csv", FILE_WRITE);
+    if (done) return;
 
     if (!file) {
-      Serial.println("Failed to open file for initializing. Terminating...");
-      return false;
+        Serial.println("File is not open, can't save data");
+        return;
     }
-  }
 
-  Serial.println("Opened file for initializing");
-  
-  // Test file with a small write first
-  if (file.println("CSV Header Test")) {
-    Serial.println("Test write successful");
-  } else {
-    Serial.println("ERROR: Test write failed");
-    file.close();
-    return false;
-  }
-  
-  // Create header string first to avoid multiple writes
-  String header = "Time (ms),Accel x (+/- 0.1 m/s^2),Accel y (+/- 0.1 m/s^2),Accel z (+/- 0.1 m/s^2),";
-  header += "Gyro x (+/- 0.2 rad/s),Gyro y (+/- 0.2 rad/s),Gyro z (+/- 0.2 rad/s),";
-  header += "Mag x (uT),Mag y (uT),Mag z (uT),Temp (C),Flight Phase";
-  
-  // Log header length
-  Serial.print("Header length: ");
-  Serial.print(header.length());
-  Serial.println(" bytes");
-  
-  // Try to write the entire header at once
-  size_t bytesWritten = file.println(header);
-  
-  if (bytesWritten == 0) {
-    Serial.println("Failed to write CSV header (0 bytes written)");
-    // Try to diagnose the issue
-    Serial.print("File size: ");
-    Serial.print(file.size());
-    Serial.println(" bytes");
-    Serial.print("File position: ");
-    Serial.print(file.position());
-    Serial.println(" bytes");
-    Serial.print("SPIFFS free space: ");
-    Serial.print(SPIFFS.totalBytes() - SPIFFS.usedBytes());
-    Serial.println(" bytes");
+    // Pre-allocate a buffer for CSV formatting
+    char buffer[256]; // Large enough for one CSV line
     
-    file.close();
-    return false;
-  }
-  
-  Serial.print("Successfully wrote header (");
-  Serial.print(bytesWritten);
-  Serial.println(" bytes)");
-
-  file.close();
-  file = SPIFFS.open("/data.csv", FILE_APPEND);
-  
-  if (!file) {
-    Serial.println("Failed to reopen file for writing");
-    return false;
-  }
-  
-  // Verify file is valid and writable
-  if (!file.size()) {
-    Serial.println("Warning: File size is 0 after reopening");
-  }
-  
-  // Test append operation
-  if (!file.println("# Test append line")) {
-    Serial.println("Warning: Test append write failed");
-    file.close();
-    return false;
-  }
-  
-  Serial.println("Opened file for writing");
-  return true;
+    // Format the entire line at once using snprintf
+    int bytesWritten = snprintf(buffer, sizeof(buffer),
+        "%lu,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%d\n",
+        time,
+        acceleration.x, acceleration.y, acceleration.z,
+        gyroscope.x, gyroscope.y, gyroscope.z,
+        magnetic.x, magnetic.y, magnetic.z,
+        temperature, flightPhase);
+        
+    // Write the buffer to file
+    if (bytesWritten > 0 && bytesWritten < sizeof(buffer)) {
+        file.write((const uint8_t*)buffer, bytesWritten);
+    } else {
+        Serial.println("Error formatting CSV data");
+    }
 }
 
+bool initialize_csv() {
+    Serial.println("Starting CSV initialization...");
+    
+    file = SPIFFS.open("/data.csv", FILE_WRITE);
+    if (!file) {
+        Serial.println("Failed to open file for initializing. Formatting...");
+        SPIFFS.format();
+
+        if (!SPIFFS.begin()) {
+            Serial.println("Failed to mount SPIFFS during formatting.");
+            return false;
+        }
+        
+        // Try to open the file again after formatting
+        file = SPIFFS.open("/data.csv", FILE_WRITE);
+
+        if (!file) {
+            Serial.println("Failed to open file for initializing. Terminating...");
+            return false;
+        }
+    }
+
+    Serial.println("Opened file for initializing");
+    
+    // Test file with a small write first
+    if (file.println("CSV Header Test")) {
+        Serial.println("Test write successful");
+    } else {
+        Serial.println("ERROR: Test write failed");
+        file.close();
+        return false;
+    }
+    
+    // Create header string first to avoid multiple writes
+    String header = "Time (ms),Accel x (+/- 0.1 m/s^2),Accel y (+/- 0.1 m/s^2),Accel z (+/- 0.1 m/s^2),";
+    header += "Gyro x (+/- 0.2 rad/s),Gyro y (+/- 0.2 rad/s),Gyro z (+/- 0.2 rad/s),";
+    header += "Mag x (uT),Mag y (uT),Mag z (uT),Temp (C),Flight Phase";
+    
+    // Log header length
+    Serial.print("Header length: ");
+    Serial.print(header.length());
+    Serial.println(" bytes");
+    
+    // Try to write the entire header at once
+    size_t bytesWritten = file.println(header);
+    
+    if (bytesWritten == 0) {
+        Serial.println("Failed to write CSV header (0 bytes written)");
+        // Try to diagnose the issue
+        Serial.print("File size: ");
+        Serial.print(file.size());
+        Serial.println(" bytes");
+        Serial.print("File position: ");
+        Serial.print(file.position());
+        Serial.println(" bytes");
+        Serial.print("SPIFFS free space: ");
+        Serial.print(SPIFFS.totalBytes() - SPIFFS.usedBytes());
+        Serial.println(" bytes");
+        
+        file.close();
+        return false;
+    }
+    
+    Serial.print("Successfully wrote header (");
+    Serial.print(bytesWritten);
+    Serial.println(" bytes)");
+
+    file.close();
+    file = SPIFFS.open("/data.csv", FILE_APPEND);
+    
+    if (!file) {
+        Serial.println("Failed to reopen file for writing");
+        return false;
+    }
+    
+    // Verify file is valid and writable
+    if (!file.size()) {
+        Serial.println("Warning: File size is 0 after reopening");
+    }
+    
+    // Test append operation
+    if (!file.println("# Test append line")) {
+        Serial.println("Warning: Test append write failed");
+        file.close();
+        return false;
+    }
+    
+    Serial.println("Opened file for writing");
+    return true;
+}
 
 void FlightData::serve_csv(WiFiClient& client) {
     if (file) {
@@ -217,4 +216,3 @@ void FlightData::serve_csv(WiFiClient& client) {
     }
     file.close();
 }
-
