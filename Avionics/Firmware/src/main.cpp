@@ -22,6 +22,7 @@ bool ignitionActive = false;
 
 FlightPhase currentPhase = IDLE;
 
+
 // Function to handle ignition circuit safety
 void handleIgnitionSafety() {
   if (ignitionActive && (millis() - ignitionTime >= IGNITION_DURATION)) {
@@ -35,10 +36,13 @@ void handleIgnitionSafety() {
   }
 }
 
+
 void setup() {
   Wire.begin(21, 22); // SDA on GPIO 21, SCL on GPIO 22   
   Serial.begin(115200);
-  while(!Serial) {}
+  while(!Serial) {
+    delay(100);
+  }
 
   Serial.println("STARTING WIFI INITIALIZATION");
   bool wifiResult = initWifiAccessPoint();
@@ -97,14 +101,14 @@ void setup() {
   startTime = millis();
 }
 
+
 void loop() {
   // Process state machine transitions first
   processStateMachine();
   
   // Apply appropriate control based on current state
   // Only run PID control during active flight phases that need it
-  if (currentPhase == IGNITION || currentPhase == POWERED_FLIGHT || 
-      currentPhase == COASTING) {
+  if (currentPhase == IGNITION || currentPhase == POWERED_FLIGHT) {
       PID_Loop();
   }
   
@@ -116,6 +120,7 @@ void loop() {
   yield();
   delay(10);
 }
+
 
 // Flip PMOS and NMOS states for ignition control, begin gimbal control and data logging
 void beginFlight() {

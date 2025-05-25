@@ -12,6 +12,7 @@ unsigned long startTime = 0;
 FlightData currentData;
 extern bool done; // Declared in Wifi_Control.cpp
 
+
 FlightData::FlightData() {
     acceleration = {0.0, 0.0, 0.0};
     gyroscope = {0.0, 0.0, 0.0};
@@ -20,17 +21,21 @@ FlightData::FlightData() {
     time = 0;
 }
 
+
 sensors_vec_t FlightData::getAccel() const {
     return acceleration;
 }
+
 
 sensors_vec_t FlightData::getGyro() const {
     return gyroscope;
 }
 
+
 sensors_vec_t FlightData::getMag() const {
     return magnetic;
 }
+
 
 float FlightData::getTemp() const {
     return temperature;
@@ -114,21 +119,13 @@ bool initialize_csv() {
 
   Serial.println("Opened file for initializing");
 
-  bool headerWriteSuccess = true;
-  headerWriteSuccess &= file.print("Time (ms)") && file.print(",");
-  headerWriteSuccess &= file.print("Accel x (+/- 0.1 m/s^2)") && file.print(",");
-  headerWriteSuccess &= file.print("Accel y (+/- 0.1 m/s^2)") && file.print(",");
-  headerWriteSuccess &= file.print("Accel z (+/- 0.1 m/s^2)") && file.print(",");
-  headerWriteSuccess &= file.print("Gyro x (+/- 0.2 rad/s)") && file.print(",");
-  headerWriteSuccess &= file.print("Gyro y (+/- 0.2 rad/s)") && file.print(",");
-  headerWriteSuccess &= file.print("Gyro z (+/- 0.2 rad/s)") && file.print(",");
-  headerWriteSuccess &= file.print("Mag x (uT)") && file.print(",");
-  headerWriteSuccess &= file.print("Mag y (uT)") && file.print(",");
-  headerWriteSuccess &= file.print("Mag z (uT)") && file.print(",");
-  headerWriteSuccess &= file.print("Temp (C)") && file.print(",");
-  headerWriteSuccess &= file.println("Flight Phase");
+  String header = "Time (ms),Accel x (+/- 0.1 m/s^2),Accel y (+/- 0.1 m/s^2),Accel z (+/- 0.1 m/s^2),";
+  header += "Gyro x (+/- 0.2 rad/s),Gyro y (+/- 0.2 rad/s),Gyro z (+/- 0.2 rad/s),";
+  header += "Mag x (uT),Mag y (uT),Mag z (uT),Temp (C),Flight Phase";
 
-  if (!headerWriteSuccess) {
+  size_t bytesWritten = file.println(header);
+
+  if (bytesWritten == 0) {
     Serial.println("Failed to write CSV header");
     file.close();
     return false;

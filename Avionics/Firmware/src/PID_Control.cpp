@@ -15,6 +15,7 @@ double setpointY = 0.0, inputY, outputY; // Y-axis PID variables
 PID pidX(&inputX, &outputX, &setpointX, Kp, Ki, Kd, DIRECT);
 PID pidY(&inputY, &outputY, &setpointY, Kp, Ki, Kd, DIRECT);
 
+
 void PID_Config(){
   // Attach servos to GPIO pins with appropriate PWM parameters
   gimbal_x.attach(16, 1000, 2000);
@@ -26,6 +27,7 @@ void PID_Config(){
   pidX.SetOutputLimits(-20, 20);
   pidY.SetOutputLimits(-20, 20);
 }
+
 
 void PID_Loop(){
     currentData.update_values();
