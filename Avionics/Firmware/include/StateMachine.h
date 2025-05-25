@@ -10,10 +10,7 @@
 // Acceleration thresholds in m/s²
 extern const float LIFTOFF_ACCEL_THRESHOLD;  // Minimum acceleration to confirm liftoff
 
-// Burnout detection parameters
-extern const float BURNOUT_MAX_ACCEL_THRESHOLD;  // Minimum peak acceleration during powered flight
-extern const float BURNOUT_CURRENT_ACCEL_THRESHOLD;  // Maximum current acceleration to consider burnout
-extern const float BURNOUT_REDUCTION_FACTOR;  // Minimum ratio of current/max acceleration
+extern const float BURNOUT_GRAVITY_THRESHOLD;
 
 extern const unsigned long RECOVERY_DURATION;
 
