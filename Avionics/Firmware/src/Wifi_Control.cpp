@@ -349,7 +349,7 @@ void remoteControl(void (*beginFlight)()) {
             // Wait for encrypted command
             Serial.println("Waiting for encrypted command...");
             unsigned long cmdStartTime = millis();
-            while(!client.available() && millis() - cmdStartTime < 5000) { // 5-second timeout
+            while(!client.available() && millis() - cmdStartTime < 20000) { // 5-second timeout
                 delay(10);
             }
             

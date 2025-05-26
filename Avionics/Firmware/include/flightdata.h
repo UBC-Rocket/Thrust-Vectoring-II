@@ -2,10 +2,15 @@
 #ifndef FLIGHTDATA_H
 #define FLIGHTDATA_H
 
-#include <Adafruit_ICM20X.h>
-#include <Adafruit_ICM20948.h>
-#include <Adafruit_Sensor.h>
+
 #include <ESPAsyncWebServer.h>
+
+// Define compatibility structure for sensors_vec_t (to maintain existing interface)
+typedef struct {
+    float x;
+    float y;
+    float z;
+} sensors_vec_t;
 
 /*
  * Data storage class:
@@ -19,15 +24,12 @@ class FlightData
         sensors_vec_t acceleration, gyroscope, magnetic;
         float temperature;
         unsigned long time;
-
     public:
         FlightData();
-
         sensors_vec_t getAccel() const;
         sensors_vec_t getGyro() const;
         sensors_vec_t getMag() const;
         float getTemp() const;
-        
         void update_values();
         void print_values_arduino();
         void save_values();

@@ -3,8 +3,6 @@
 #include "main.h"
 #include "IMU_Control.h"
 
-extern Adafruit_ICM20948 imu;
-
 // Objects
 File file;
 
@@ -48,52 +46,63 @@ float FlightData::getTemp() const {
 * So that the csv file isn't unnecessarily massive with zeroes.
 */
 void FlightData::update_values() {
-  if (done) return;
-  time = millis() - startTime;
-  
-  sensors_event_t accel, gyro, mag, temp;
-  imu.getEvent(&accel, &gyro, &mag, &temp);
+    if (done) return;
+    time = millis() - startTime;
 
-  this->magnetic = mag.magnetic;
-  this->temperature = temp.temperature;
+    // Get calibrated sensor data from the new IMU control system
+    float accel_x, accel_y, accel_z;
+    float gyro_x, gyro_y, gyro_z;
+    float mag_x, mag_y, mag_z;
 
-  // Account for IMU rotation within rocket:
-  this->acceleration.z = accel.acceleration.x - accel_x_offset;
-  this->acceleration.y = accel.acceleration.z - accel_z_offset;
-  this->acceleration.x = accel.acceleration.y - accel_y_offset;
-  this->gyroscope.z = gyro.gyro.x - gyro_x_offset;
-  this->gyroscope.y = gyro.gyro.z - gyro_z_offset;
-  this->gyroscope.x = gyro.gyro.y - gyro_y_offset;
-  flightPhase = (int)currentPhase;
+    getCalibratedAcceleration(accel_x, accel_y, accel_z);
+    getCalibratedGyroscope(gyro_x, gyro_y, gyro_z);
+    getMagnetometer(mag_x, mag_y, mag_z);
+    this->temperature = getTemperature();
+
+    // Account for IMU rotation within rocket (maintain existing coordinate transformation):
+    this->acceleration.z = accel_x;  // Forward/backward becomes up/down
+    this->acceleration.y = accel_z;  // Up/down becomes left/right
+    this->acceleration.x = accel_y;  // Left/right becomes forward/backward
+
+    this->gyroscope.z = gyro_x;
+    this->gyroscope.y = gyro_z;
+    this->gyroscope.x = gyro_y;
+
+    // Magnetometer data (convert from µT to match expected units)
+    this->magnetic.x = mag_x;
+    this->magnetic.y = mag_y;
+    this->magnetic.z = mag_z;
+
+    flightPhase = (int)currentPhase;
 }
 
 
 void FlightData::save_values() {
-  if (done) return;
+    if (done) return;
 
-  if (!file) {
-    Serial.println("File is not open, can't save data");
-    return;
-  }
+    if (!file) {
+        Serial.println("File is not open, can't save data");
+        return;
+    }
 
-  // Pre-allocate a buffer for CSV formatting
-  char buffer[256]; // Large enough for one CSV line
-  
-  // Format the entire line at once using snprintf
-  int bytesWritten = snprintf(buffer, sizeof(buffer),
-    "%lu,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%d\n",
-    time,
-    acceleration.x, acceleration.y, acceleration.z,
-    gyroscope.x, gyroscope.y, gyroscope.z,
-    magnetic.x, magnetic.y, magnetic.z,
-    temperature, flightPhase);
-    
-  // Write the buffer to file
-  if (bytesWritten > 0 && bytesWritten < sizeof(buffer)) {
-    file.write((const uint8_t*)buffer, bytesWritten);
-  } else {
-    Serial.println("Error formatting CSV data");
-  }
+    // Pre-allocate a buffer for CSV formatting
+    char buffer[256]; // Large enough for one CSV line
+
+    // Format the entire line at once using snprintf
+    int bytesWritten = snprintf(buffer, sizeof(buffer),
+        "%lu,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%d\n",
+        time,
+        acceleration.x, acceleration.y, acceleration.z,
+        gyroscope.x, gyroscope.y, gyroscope.z,
+        magnetic.x, magnetic.y, magnetic.z,
+        temperature, flightPhase);
+
+    // Write the buffer to file
+    if (bytesWritten > 0 && bytesWritten < sizeof(buffer)) {
+        file.write((const uint8_t*)buffer, bytesWritten);
+    } else {
+        Serial.println("Error formatting CSV data");
+    }
 }
 
 

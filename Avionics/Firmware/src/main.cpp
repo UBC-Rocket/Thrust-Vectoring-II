@@ -5,7 +5,8 @@
 #include "IMU_Control.h"
 #include "PID_Control.h"
 #include "flightdata.h"
-#include "StateMachine.h" // Add the new header
+#include "StateMachine.h"
+
 
 extern bool done; // Is flight finished
 bool started = false; // Is flight started
@@ -118,7 +119,7 @@ void loop() {
   // Handle communication and other background tasks
   remoteControl(beginFlight);
   yield();
-  delay(10);
+  delay(4);
 }
 
 
