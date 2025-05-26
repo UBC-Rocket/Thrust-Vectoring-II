@@ -11,8 +11,6 @@
 // Initialize servo motors, and servo offsets
 extern Servo gimbal_x;
 extern Servo gimbal_y;
-extern const int servoxinit;
-extern const int servoyinit;
 
 extern PID pidX;
 extern PID pidY;
@@ -23,5 +21,7 @@ extern double setpointY, inputY, outputY;
 void PID_Config();
 
 void PID_Loop();
+double servoX_PWM();
+double servoY_PWM();
 
 #endif //PID_CONTROL_H
