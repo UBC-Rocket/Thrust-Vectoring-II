@@ -111,8 +111,7 @@ bool initialize_csv() {
 
   Serial.println("Opened file for initializing");
 
-  String header = "Time (ms),Accel x (+/- 0.1 m/s^2),Accel y (+/- 0.1 m/s^2),Accel z (+/- 0.1 m/s^2),";
-  header += "Input x,Output x,Input y,Output y";
+  String header = "Time (ms),Input x,Output x,Input y,Output y,Accel x (+/- 0.1 m/s^2),Accel y (+/- 0.1 m/s^2),Accel z (+/- 0.1 m/s^2),";
   header += "Gyro x (+/- 0.2 rad/s),Gyro y (+/- 0.2 rad/s),Gyro z (+/- 0.2 rad/s),Flight Phase";
 
   size_t bytesWritten = file.println(header);
