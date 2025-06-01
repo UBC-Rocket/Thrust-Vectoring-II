@@ -2,6 +2,7 @@
 #include "flightdata.h"
 #include "main.h"
 #include "IMU_Control.h"
+#include "PID_Control.h"
 
 // Objects
 File file;
@@ -30,16 +31,6 @@ sensors_vec_t FlightData::getGyro() const {
 }
 
 
-sensors_vec_t FlightData::getMag() const {
-    return magnetic;
-}
-
-
-float FlightData::getTemp() const {
-    return temperature;
-}
-
-
 /*
 * Should add a check here to know when the flight is over (set done = true).
 * Possibly check if max accel has been greater than x and that accel has been < y for z number of checks.
@@ -52,12 +43,9 @@ void FlightData::update_values() {
     // Get calibrated sensor data from the new IMU control system
     float accel_x, accel_y, accel_z;
     float gyro_x, gyro_y, gyro_z;
-    float mag_x, mag_y, mag_z;
 
     getCalibratedAcceleration(accel_x, accel_y, accel_z);
     getCalibratedGyroscope(gyro_x, gyro_y, gyro_z);
-    getMagnetometer(mag_x, mag_y, mag_z);
-    this->temperature = getTemperature();
 
     // Account for IMU rotation within rocket (maintain existing coordinate transformation):
     this->acceleration.z = accel_x;  // Forward/backward becomes up/down
@@ -67,11 +55,6 @@ void FlightData::update_values() {
     this->gyroscope.z = gyro_x;
     this->gyroscope.y = gyro_z;
     this->gyroscope.x = gyro_y;
-
-    // Magnetometer data (convert from µT to match expected units)
-    this->magnetic.x = mag_x;
-    this->magnetic.y = mag_y;
-    this->magnetic.z = mag_z;
 
     flightPhase = (int)currentPhase;
 }
@@ -92,10 +75,10 @@ void FlightData::save_values() {
     int bytesWritten = snprintf(buffer, sizeof(buffer),
         "%lu,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%d\n",
         time,
+        inputX, outputX, inputY, outputY,
         acceleration.x, acceleration.y, acceleration.z,
         gyroscope.x, gyroscope.y, gyroscope.z,
-        magnetic.x, magnetic.y, magnetic.z,
-        temperature, flightPhase);
+        flightPhase);
 
     // Write the buffer to file
     if (bytesWritten > 0 && bytesWritten < sizeof(buffer)) {
@@ -129,8 +112,8 @@ bool initialize_csv() {
   Serial.println("Opened file for initializing");
 
   String header = "Time (ms),Accel x (+/- 0.1 m/s^2),Accel y (+/- 0.1 m/s^2),Accel z (+/- 0.1 m/s^2),";
-  header += "Gyro x (+/- 0.2 rad/s),Gyro y (+/- 0.2 rad/s),Gyro z (+/- 0.2 rad/s),";
-  header += "Mag x (uT),Mag y (uT),Mag z (uT),Temp (C),Flight Phase";
+  header += "Input x,Output x,Input y,Output y";
+  header += "Gyro x (+/- 0.2 rad/s),Gyro y (+/- 0.2 rad/s),Gyro z (+/- 0.2 rad/s),Flight Phase";
 
   size_t bytesWritten = file.println(header);
 
