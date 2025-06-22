@@ -45,7 +45,6 @@ void PID_Loop(){
     updateIMUWithKalman();
 
     currentData.update_values();
-    currentData.save_values();
 
     // Update PID input values with Kalman filtered angles instead of raw gyro rates
     // Using filtered angles provides better stability than raw gyro rates
