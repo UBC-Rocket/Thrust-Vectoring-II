@@ -2,8 +2,8 @@
 #ifndef FLIGHTDATA_H
 #define FLIGHTDATA_H
 
-
 #include <ESPAsyncWebServer.h>
+
 
 // Define compatibility structure for sensors_vec_t (to maintain existing interface)
 typedef struct {
@@ -11,6 +11,7 @@ typedef struct {
     float y;
     float z;
 } sensors_vec_t;
+
 
 /*
  * Data storage class:

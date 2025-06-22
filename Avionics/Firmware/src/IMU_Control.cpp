@@ -103,7 +103,6 @@ void calibrateGyroscope() {
           Serial.print((i * 100) / calibrationSamples);
           Serial.println("%");
       }
-
       delay(1); // Short delay between readings
   }
 
