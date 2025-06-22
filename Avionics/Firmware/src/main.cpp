@@ -117,7 +117,14 @@ void loop() {
   handleIgnitionSafety();
   
   // Handle communication and other background tasks
-  remoteControl(beginFlight);
+  if (currentPhase == IDLE || currentPhase == LANDED) {
+    remoteControl(beginFlight);
+  }
+
+  if (currentPhase == IGNITION || currentPhase == POWERED_FLIGHT || currentPhase == COASTING) {
+    currentData.save_values();
+  }
+
   yield();
   delay(4);
 }
