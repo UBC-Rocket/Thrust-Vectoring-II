@@ -1,4 +1,4 @@
-// Firmware/src/main.cpp (modified)
+// Firmware/src/main.cpp 
 
 #include "main.h"
 #include "Wifi_Control.h"
@@ -146,7 +146,7 @@ void beginFlight() {
       ignitionActive = true;
       
       // Change to IGNITION state
-      changeFlightPhase(IGNITION);
+      changeFlightPhase(POWERED_FLIGHT);
       started = true; // Maintain compatibility with existing code
       
       Serial.println("Ignition circuit activated");
