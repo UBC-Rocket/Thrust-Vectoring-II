@@ -1,6 +1,7 @@
 // Firmware/src/StateMachine.cpp
 #include "StateMachine.h"
 #include "flightdata.h"
+#include "PID_Control.h"
 
 // Flight detection thresholds
 const float LIFTOFF_ACCEL_THRESHOLD = 10.0;  // Minimum acceleration to confirm liftoff
@@ -11,13 +12,12 @@ const unsigned long RECOVERY_DURATION = 5000;
 unsigned long phaseStartTime = 0;
 bool parachuteDeployed = false;
 
-const unsigned long MOTOR_BURN_DURATION = 3700;
+const unsigned long MOTOR_BURN_DURATION = 3500;
 unsigned long ignitionStartTime = 0; 
 
 extern FlightData currentData;
 extern bool done;
 extern FlightPhase currentPhase;
-
 
 // Helper function to get string representation of flight phase
 const char* getPhaseString(FlightPhase phase) {
@@ -104,6 +104,7 @@ void changeFlightPhase(FlightPhase newPhase) {
 void deployParachute() {
   if (!parachuteDeployed) {
       Serial.println("Deploying parachute...");
+      callParachute();
       parachuteDeployed = true;
   }
 }
@@ -158,6 +159,7 @@ void waitToLand() {
 void processStateMachine() {
   switch(currentPhase) {
       case IDLE:
+          prepParachute();
           // Wait for commands
           break;
           
