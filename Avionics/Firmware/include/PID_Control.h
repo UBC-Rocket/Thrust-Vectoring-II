@@ -23,5 +23,7 @@ void PID_Config();
 void PID_Loop();
 double servoX_PWM();
 double servoY_PWM();
+void callParachute();
+void prepParachute();
 
 #endif //PID_CONTROL_H
