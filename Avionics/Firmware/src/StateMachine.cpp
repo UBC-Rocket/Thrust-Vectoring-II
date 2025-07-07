@@ -7,7 +7,7 @@
 const float LIFTOFF_ACCEL_THRESHOLD = 10.0;  // Minimum acceleration to confirm liftoff
 const float BURNOUT_GRAVITY_THRESHOLD = -8.0;
 
-const unsigned long RECOVERY_DURATION = 10000;
+const unsigned long RECOVERY_DURATION = 5000;
 
 unsigned long phaseStartTime = 0;
 bool parachuteDeployed = false;
@@ -125,9 +125,9 @@ void detectBurnout() {
 
 void detectApogee() {
   Serial.print("Detecting Apogee");
-  // Simply wait 1 second after entering coasting phase
-  if (millis() - phaseStartTime >= 1000) {  
-      Serial.println("Apogee timer elapsed (1 second) - assuming apogee reached");
+  // Simply wait 0.5 second after entering coasting phase
+  if (millis() - phaseStartTime >= 500) {  
+      Serial.println("Apogee timer elapsed (0.5 second) - assuming apogee reached");
       changeFlightPhase(APOGEE);
   }
 }
@@ -136,8 +136,8 @@ void detectApogee() {
 void waitToOpenParachute() {
   Serial.print("Currently in Apogee state");
   // Deploy parachute
-  if (millis() - phaseStartTime >= 1000) {  // 1 second
-      Serial.println("Deploying parachute 1 second after apogee");
+  if (millis() - phaseStartTime >= 500) {  // 1 second
+      Serial.println("Deploying parachute 0.5 second after apogee");
       deployParachute();
       changeFlightPhase(RECOVERY);
   }
@@ -148,7 +148,7 @@ void waitToLand() {
   Serial.print("Currently in Recovery state");
   // simpler time-based approach
   if (millis() - phaseStartTime >= RECOVERY_DURATION) {
-      Serial.println("Recovery duration complete after 10 seconds free fall, assuming landed");
+      Serial.println("Recovery duration complete after 5 seconds free fall, assuming landed");
       changeFlightPhase(LANDED);
       done = true;  // Signal flight completion
   }
