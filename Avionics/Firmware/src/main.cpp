@@ -1,4 +1,4 @@
-// Firmware/src/main.cpp (modified)
+// Firmware/src/main.cpp 
 
 #include "main.h"
 #include "Wifi_Control.h"
@@ -117,7 +117,14 @@ void loop() {
   handleIgnitionSafety();
   
   // Handle communication and other background tasks
-  remoteControl(beginFlight);
+  if (currentPhase == IDLE || currentPhase == LANDED) {
+    remoteControl(beginFlight);
+  }
+
+  if (currentPhase == IGNITION || currentPhase == POWERED_FLIGHT || currentPhase == COASTING) {
+    currentData.save_values();
+  }
+
   yield();
   delay(4);
 }
@@ -139,7 +146,7 @@ void beginFlight() {
       ignitionActive = true;
       
       // Change to IGNITION state
-      changeFlightPhase(IGNITION);
+      changeFlightPhase(POWERED_FLIGHT);
       started = true; // Maintain compatibility with existing code
       
       Serial.println("Ignition circuit activated");

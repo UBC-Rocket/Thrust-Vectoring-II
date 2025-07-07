@@ -27,7 +27,6 @@ void changeFlightPhase(FlightPhase newPhase);
 void deployParachute();
 
 // Detection functions for state transitions
-void detectIgnition();
 void detectBurnout();
 void detectApogee();
 void waitToOpenParachute();
