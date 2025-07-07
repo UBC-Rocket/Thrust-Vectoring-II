@@ -1,4 +1,5 @@
 // Firmware/src/main.cpp 
+// To download CSV file, please visit http://http://192.168.4.1/download
 
 #include "main.h"
 #include "Wifi_Control.h"
