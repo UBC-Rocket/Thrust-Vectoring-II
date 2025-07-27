@@ -32,16 +32,13 @@ void PID_Config(){
     pidY.SetOutputLimits(-20, 20);
 }
 
+double servoX_PWM(double gimbalX) {
+  return 1443 - 63.3 * gimbalX - 1.15 * pow(gimbalX, 2);
+}
 
 double servoY_PWM(double gimbalY) {
-  return 1453 - 39.3 * gimbalY + 0.464 * pow(gimbalY, 2);
+  return 1142 + 32.5 * gimbalY + 3.27 * pow(gimbalY, 2);
 }
-
-
-double servoX_PWM(double gimbalX) {
-  return 1373 + 48.6 * gimbalX - 0.288 * pow(gimbalX, 2);
-}
-
 
 void PID_Loop(){
     updateIMUWithKalman();
