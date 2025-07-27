@@ -100,23 +100,27 @@ void setup() {
 }
 
 void loop() {
+  sweepServosOnce();
+
   // // Process state machine transitions first
   // processStateMachine();
   
   // // Apply appropriate control based on current state
   // // Only run PID control during active flight phases that need it
-  if (currentPhase == IGNITION || currentPhase == POWERED_FLIGHT || 
-      currentPhase == COASTING) {
-      PID_Loop();
-  }
+  // if (currentPhase == IGNITION || currentPhase == POWERED_FLIGHT || 
+  //     currentPhase == COASTING) {
+  //     PID_Loop();
+  // }
+
+  // PID_Loop();
   
   // // Process ignition circuit safety shutdown
   // handleIgnitionSafety();
   
   // // Handle communication and other background tasks
   // remoteControl(beginFlight);
-  yield();
-  delay(10);
+  // yield();
+  // delay(10);
 }
 
 // Flip PMOS and NMOS states for ignition control, begin gimbal control and data logging

@@ -11,6 +11,12 @@ const double Kp = 1, Ki = 2, Kd = 0;
 double setpointX = 0.0, inputX, outputX; // X-axis PID variables
 double setpointY = 0.0, inputY, outputY; // Y-axis PID variables
 
+// Servo sweep parameters
+static const int MIN = 0;
+static const int MAX = 180;
+static const int STEP_SIZE = 5;
+static const unsigned long PAUSE_MS = 2000;
+
 // Initialize PID controllers for X and Y axes
 PID pidX(&inputX, &outputX, &setpointX, Kp, Ki, Kd, DIRECT);
 PID pidY(&inputY, &outputY, &setpointY, Kp, Ki, Kd, DIRECT);
@@ -43,4 +49,39 @@ void PID_Loop(){
       pidY.Compute();   // Compute PID output for Y-axis
       gimbal_y.write(servoyinit + outputY * SERVO_MULTIPLIER); // Adjust gimbal Y servo
     }
+}
+
+void sweepServosOnce() {
+  // only run once
+  static bool done = false;
+  if (done) return;
+  done = true;
+
+  // X axis forward and back
+  for (int p = MIN; p <= MAX; p += STEP_SIZE) {
+    gimbal_x.write(p);
+    Serial.print("X: ");
+    Serial.println(p);
+    delay(PAUSE_MS);
+  }
+  for (int p = MAX; p >= MIN; p -= STEP_SIZE) {
+    gimbal_x.write(p);
+    Serial.print("X: ");
+    Serial.println(p);
+    delay(PAUSE_MS);
+  }
+
+  // Y axis forward and back
+  for (int p = MIN; p <= MAX; p += STEP_SIZE) {
+    gimbal_y.write(p);
+    Serial.print("Y: ");
+    Serial.println(p);
+    delay(PAUSE_MS);
+  }
+  for (int p = MAX; p >= MIN; p -= STEP_SIZE) {
+    gimbal_y.write(p);
+    Serial.print("Y: ");
+    Serial.println(p);
+    delay(PAUSE_MS);
+  }
 }

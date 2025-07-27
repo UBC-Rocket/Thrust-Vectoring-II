@@ -24,4 +24,6 @@ void PID_Config();
 
 void PID_Loop();
 
+void sweepServosOnce();
+
 #endif //PID_CONTROL_H
