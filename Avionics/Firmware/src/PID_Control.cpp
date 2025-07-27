@@ -9,7 +9,7 @@
 // Servo, PID Controller Constants and Variables for X and Y Axes
 Servo gimbal_x;
 Servo gimbal_y;
-const double Kp = 0.297, Ki = 0.00155, Kd = 0.0569;
+const double Kp = 3, Ki = 0, Kd = 0;
 double setpointX = 0.0, inputX, outputX; // X-axis PID variables
 double setpointY = 0.0, inputY, outputY; // Y-axis PID variables
 

@@ -11,7 +11,7 @@ const unsigned long RECOVERY_DURATION = 5000;
 unsigned long phaseStartTime = 0;
 bool parachuteDeployed = false;
 
-const unsigned long MOTOR_BURN_DURATION = 3700;
+const unsigned long MOTOR_BURN_DURATION = 37000;
 unsigned long ignitionStartTime = 0; 
 
 extern FlightData currentData;
