@@ -169,12 +169,12 @@ void calibrateGyroAccel() {
 
 
 void kalman_1d(float KalmanState, float KalmanUncertainty, float KalmanInput, float KalmanMeasurement) {
-  // Prediction step - Project the state ahead
+  // Prediction step - Project the state aheads
   KalmanState = KalmanState + dt * KalmanInput;
-  KalmanUncertainty = KalmanUncertainty + dt * dt * 16; // 4*4 process noise variance
+  KalmanUncertainty = KalmanUncertainty + dt * dt * 25; // 4*4 process noise variance
 
   // Update step - Correction based on measurement
-  float KalmanGain = KalmanUncertainty / (KalmanUncertainty + 9); // 3*3 measurement noise variance
+  float KalmanGain = KalmanUncertainty / (KalmanUncertainty + 1); // 3*3 measurement noise variance
   KalmanState = KalmanState + KalmanGain * (KalmanMeasurement - KalmanState);
   KalmanUncertainty = (1 - KalmanGain) * KalmanUncertainty;
 
