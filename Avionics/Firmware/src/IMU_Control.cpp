@@ -31,8 +31,6 @@ float accel_z_offset = 0;
 // Cached sensor data for efficiency
 static xyzFloat lastGValue;
 static xyzFloat lastGyrValue;
-static xyzFloat lastMagValue;
-static float lastTemp;
 static unsigned long lastReadTime = 0;
 
 
@@ -63,12 +61,6 @@ void configIMU() {
   // Set the gyroscope range and filter
   imu.setGyrRange(ICM20948_GYRO_RANGE_250);
   imu.setGyrDLPF(ICM20948_DLPF_6);
-
-  // Temperature filter
-  imu.setTempDLPF(ICM20948_DLPF_6);
-
-  // Magnetometer settings
-  imu.setMagOpMode(AK09916_CONT_MODE_20HZ);
 
   Serial.println("Keep IMU still. Calibrating gyroscope and accelerometer...");
 
@@ -111,7 +103,6 @@ void calibrateGyroscope() {
           Serial.print((i * 100) / calibrationSamples);
           Serial.println("%");
       }
-
       delay(1); // Short delay between readings
   }
 
@@ -205,8 +196,6 @@ void updateIMUWithKalman() {
   // Cache the raw data for other functions
   lastGValue = imu.getGValues();
   lastGyrValue = imu.getGyrValues();
-  lastMagValue = imu.getMagValues();
-  lastTemp = imu.getTemperature();
   lastReadTime = currentTime;
 
   // Calculate angles from accelerometer data
@@ -279,16 +268,4 @@ void getCalibratedGyroscope(float &x, float &y, float &z) {
   x = lastGyrValue.x;
   y = lastGyrValue.y;
   z = lastGyrValue.z;
-}
-
-
-void getMagnetometer(float &x, float &y, float &z) {
-  x = lastMagValue.x;
-  y = lastMagValue.y;
-  z = lastMagValue.z;
-}
-
-
-float getTemperature() {
-  return lastTemp;
 }

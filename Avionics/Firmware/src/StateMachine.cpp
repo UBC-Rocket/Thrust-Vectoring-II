@@ -1,20 +1,23 @@
 // Firmware/src/StateMachine.cpp
 #include "StateMachine.h"
 #include "flightdata.h"
+#include "PID_Control.h"
 
 // Flight detection thresholds
 const float LIFTOFF_ACCEL_THRESHOLD = 10.0;  // Minimum acceleration to confirm liftoff
 const float BURNOUT_GRAVITY_THRESHOLD = -8.0;
 
-const unsigned long RECOVERY_DURATION = 30000;
+const unsigned long RECOVERY_DURATION = 5000;
 
 unsigned long phaseStartTime = 0;
 bool parachuteDeployed = false;
 
+const unsigned long MOTOR_BURN_DURATION = 3500;
+unsigned long ignitionStartTime = 0; 
+
 extern FlightData currentData;
 extern bool done;
 extern FlightPhase currentPhase;
-
 
 // Helper function to get string representation of flight phase
 const char* getPhaseString(FlightPhase phase) {
@@ -36,11 +39,15 @@ void changeFlightPhase(FlightPhase newPhase) {
   // Skip if already in this phase
   if (currentPhase == newPhase) return;
 
+  if (newPhase == IDLE) {
+    ignitionStartTime = 0;  
+  }
+
   bool validTransition = false;
   
   switch(currentPhase) {
     case IDLE:
-      validTransition = (newPhase == IGNITION);
+      validTransition = (newPhase == IGNITION || newPhase == POWERED_FLIGHT);
       break;
     case IGNITION:
       validTransition = (newPhase == POWERED_FLIGHT || newPhase == IDLE);
@@ -78,6 +85,12 @@ void changeFlightPhase(FlightPhase newPhase) {
   // Update state and record transition time
   currentPhase = newPhase;
   phaseStartTime = millis();
+  if (newPhase == IGNITION || newPhase == POWERED_FLIGHT) {
+    // Only set ignitionStartTime once per flight
+    if (ignitionStartTime == 0) {
+        ignitionStartTime = phaseStartTime;
+    }
+  }
   
   // Log the transition with timestamps
   Serial.print(millis());
@@ -91,92 +104,30 @@ void changeFlightPhase(FlightPhase newPhase) {
 void deployParachute() {
   if (!parachuteDeployed) {
       Serial.println("Deploying parachute...");
+      callParachute();
       parachuteDeployed = true;
   }
 }
 
 
-// Detection functions for state transitions
-void detectIgnition() {
-
-  // TODO delete later
-  changeFlightPhase(POWERED_FLIGHT);
-
-  // TODO uncomment later
-  // Serial.print("Detecting Ignition");
-  // // Calculate acceleration magnitude from all axes
-  // float accelMagnitude = sqrt(
-  //     pow(currentData.getAccel().x, 2) + 
-  //     pow(currentData.getAccel().y, 2) + 
-  //     pow(currentData.getAccel().z, 2)
-  // );
-  
-  // // Transition based on sufficient acceleration AND sustained increase
-  // if (accelMagnitude > LIFTOFF_ACCEL_THRESHOLD) {
-  //     Serial.print("Lift-off detected with acceleration: ");
-  //     Serial.print(accelMagnitude);
-  //     Serial.println(" m/s²");
-      
-  //     changeFlightPhase(POWERED_FLIGHT);
-  // }
-  
-  // // Safety timeout for failed ignition (5 seconds if not sufficient acceleration, go back to idle)
-  // if (millis() - phaseStartTime > 10000) {
-  //     Serial.println("ERROR: No significant acceleration detected after ignition timeout");
-  //     // For now, just go back to IDLE state
-  //     changeFlightPhase(IDLE);
-  // }
-}
-
-
 void detectBurnout() {
-  // TODO delete later
-  return;
-
-  // TODO uncomment later
-  // Serial.print("Detecting Burnout");
-  // // Get vertical acceleration
-  // float verticalAccel = currentData.getAccel().x;
-  
-  // // Use a small window to smooth noise
-  // static float accelWindow[5] = {0};
-  // static int windowIndex = 0;
-  // static int samplesCollected = 0;
-  
-  // // Update window with newest reading
-  // accelWindow[windowIndex] = verticalAccel;
-  // windowIndex = (windowIndex + 1) % 5;
-
-  // if (samplesCollected < 5) {
-  //   samplesCollected++;
-  //   return;  // Don't make decisions until window is full
-  // }
-  
-  // // Calculate average vertical acceleration
-  // float avgVertAccel = 0;
-  // for (int i = 0; i < 5; i++) {
-  //   avgVertAccel += accelWindow[i];
-  // }
-  // avgVertAccel /= 5.0;
-  
-  // // Check if acceleration has transitioned to gravity-dominated
-  // // -8.0 m/s² allows for some noise/calibration error but is clearly gravity-dominated
-  // if (avgVertAccel < BURNOUT_GRAVITY_THRESHOLD) {
-  //   Serial.print("Motor burnout detected. Vertical acceleration: ");
-  //   Serial.print(avgVertAccel);
-  //   Serial.print(" m/s² (threshold: ");
-  //   Serial.print(BURNOUT_GRAVITY_THRESHOLD);
-  //   Serial.println(" m/s²)");
-  //   changeFlightPhase(COASTING);
-  // }
+  // Timer-based burnout detection from IGNITION start
+  if (millis() - ignitionStartTime >= MOTOR_BURN_DURATION) {
+      Serial.print("Motor burnout detected via timer. Total time since ignition: ");
+      Serial.print(millis() - ignitionStartTime);
+      Serial.print(" ms (threshold: ");
+      Serial.print(MOTOR_BURN_DURATION);
+      Serial.println(" ms)");
+      changeFlightPhase(COASTING);
+  }
 }
 
 
 void detectApogee() {
   Serial.print("Detecting Apogee");
-  // Simply wait 3 seconds after entering coasting phase
-  if (millis() - phaseStartTime >= 3000) {  // 3 seconds
-      Serial.println("Apogee timer elapsed (3 seconds) - assuming apogee reached");
+  // Simply wait 0.5 second after entering coasting phase
+  if (millis() - phaseStartTime >= 500) {  
+      Serial.println("Apogee timer elapsed (0.5 second) - assuming apogee reached");
       changeFlightPhase(APOGEE);
   }
 }
@@ -185,8 +136,8 @@ void detectApogee() {
 void waitToOpenParachute() {
   Serial.print("Currently in Apogee state");
   // Deploy parachute
-  if (millis() - phaseStartTime >= 3000) {  // 3 seconds
-      Serial.println("Deploying parachute 3 seconds after apogee");
+  if (millis() - phaseStartTime >= 500) {  // 1 second
+      Serial.println("Deploying parachute 0.5 second after apogee");
       deployParachute();
       changeFlightPhase(RECOVERY);
   }
@@ -197,7 +148,7 @@ void waitToLand() {
   Serial.print("Currently in Recovery state");
   // simpler time-based approach
   if (millis() - phaseStartTime >= RECOVERY_DURATION) {
-      Serial.println("Recovery duration complete after 30 seconds free fall, assuming landed");
+      Serial.println("Recovery duration complete after 5 seconds free fall, assuming landed");
       changeFlightPhase(LANDED);
       done = true;  // Signal flight completion
   }
@@ -208,12 +159,8 @@ void waitToLand() {
 void processStateMachine() {
   switch(currentPhase) {
       case IDLE:
+          prepParachute();
           // Wait for commands
-          break;
-          
-      case IGNITION:
-          // Handle ignition detection
-          detectIgnition();
           break;
           
       case POWERED_FLIGHT:
@@ -235,7 +182,7 @@ void processStateMachine() {
           break;
           
       case LANDED:
-          Serial.print("Currently in Landed state, flight COMPLETE");
+          Serial.print("Flight LANDED");
           // Flight complete - maintain this state
           break;
   }

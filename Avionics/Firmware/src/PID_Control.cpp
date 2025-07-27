@@ -9,7 +9,8 @@
 // Servo, PID Controller Constants and Variables for X and Y Axes
 Servo gimbal_x;
 Servo gimbal_y;
-const double Kp = 0.297, Ki = 0.00155, Kd = 0.0569;
+Servo parachute;
+const double Kp = 0.03214912280701755, Ki = 0.02531390291806959, Kd = 0.1372680322128851;
 double setpointX = 0.0, inputX, outputX; // X-axis PID variables
 double setpointY = 0.0, inputY, outputY; // Y-axis PID variables
 
@@ -22,6 +23,7 @@ void PID_Config(){
     // Attach servos to GPIO pins with appropriate PWM parameters
     gimbal_x.attach(16, 850, 3000);
     gimbal_y.attach(17, 850, 3000);
+    parachute.attach(18, 850, 3000);
     
     // Initialize PID controllers and set output limits for stabilization
     pidX.SetMode(AUTOMATIC);
@@ -45,7 +47,6 @@ void PID_Loop(){
     updateIMUWithKalman();
 
     currentData.update_values();
-    currentData.save_values();
 
     // Update PID input values with Kalman filtered angles instead of raw gyro rates
     // Using filtered angles provides better stability than raw gyro rates
@@ -53,18 +54,23 @@ void PID_Loop(){
     Serial.print("X: ");
     Serial.println(outputX);
 
-    if (abs(inputX) > 0.01) {
-      pidX.Compute();
-      gimbal_x.writeMicroseconds(servoX_PWM(-outputX));
-    }
-
+    pidX.Compute();
+    gimbal_x.writeMicroseconds(servoX_PWM(-outputX));
     
     inputY = getFilteredPitch(); // Y-axis (roll) stabilization using Kalman filtered angle
     Serial.print("Y: ");
     Serial.println(outputY);
 
-    if (abs(inputY) > 0.01) {
-      pidY.Compute();
-      gimbal_y.writeMicroseconds(servoY_PWM(outputY));
-    }
+    pidY.Compute();
+    gimbal_y.writeMicroseconds(servoY_PWM(outputY));
+    
 }
+
+void prepParachute(){
+  parachute.write(-90);
+}
+
+void callParachute(){
+  parachute.write(180);
+}
+
