@@ -54,28 +54,36 @@ bool initIMU(int maxRetries) {
 
 
 void configIMU() {
-  // Set the accelerometer range and filter
-  imu.setAccRange(ICM20948_ACC_RANGE_2G);
-  imu.setAccDLPF(ICM20948_DLPF_6);
+  
+  // Accelerometer configuration
+  imu.setAccRange(ICM20948_ACC_RANGE_4G); 
+  imu.setAccDLPF(ICM20948_DLPF_1);
 
-  // Set the gyroscope range and filter
-  imu.setGyrRange(ICM20948_GYRO_RANGE_250);
-  imu.setGyrDLPF(ICM20948_DLPF_6);
+  // Gyroscope configuration
+  imu.setGyrRange(ICM20948_GYRO_RANGE_500); 
+  imu.setGyrDLPF(ICM20948_DLPF_1); 
+  
+  // Set sample rate 
+  imu.setGyrSampleRateDivider(0);  // 1kHz / (1 + 0) = 1kHz
+  imu.setAccSampleRateDivider(0);  // 1kHz / (1 + 0) = 1kHz
 
   Serial.println("Keep IMU still. Calibrating gyroscope and accelerometer...");
-
-  // Give the sensor some time to stabilize before calibration
   delay(1000);
 
   // Perform calibrations
   calibrateGyroscope();
   calibrateGyroAccel();
 
-  // Initialize time for dt calculation
-  previousTime = micros();
+  // Initialize Kalman filter
+  KalmanAngleRoll = 0;
+  KalmanAnglePitch = 0;
+  KalmanUncertaintyAngleRoll = 10.0;  // Higher initial uncertainty
+  KalmanUncertaintyAnglePitch = 10.0;  // Higher initial uncertainty
 
+  previousTime = micros();
   Serial.println("IMU configuration complete");
 }
+
 
 
 void calibrateGyroscope() {
@@ -169,12 +177,28 @@ void calibrateGyroAccel() {
 
 
 void kalman_1d(float KalmanState, float KalmanUncertainty, float KalmanInput, float KalmanMeasurement) {
-  // Prediction step - Project the state aheads
+  
+  // Process noise 
+  float processNoise = 81.0;  
+  
+  // Measurement noise 
+  float measurementNoise = 2.0;  
+  
+  // Check if this is a large angle change (>20 degrees difference)
+  float angleDifference = abs(KalmanMeasurement - KalmanState);
+  
+  if (angleDifference > 15.0) {
+    // Large change detected - reduce process noise temporarily for faster convergence
+    processNoise = 100.0;  // Even more aggressive for large changes
+    measurementNoise = 1.0;  // Trust accelerometer more during large changes
+  }
+  
+  // Prediction step - Project the state ahead
   KalmanState = KalmanState + dt * KalmanInput;
-  KalmanUncertainty = KalmanUncertainty + dt * dt * 16; // 4*4 process noise variance
+  KalmanUncertainty = KalmanUncertainty + dt * dt * processNoise;
 
   // Update step - Correction based on measurement
-  float KalmanGain = KalmanUncertainty / (KalmanUncertainty + 0); // 3*3 measurement noise variance
+  float KalmanGain = KalmanUncertainty / (KalmanUncertainty + measurementNoise);
   KalmanState = KalmanState + KalmanGain * (KalmanMeasurement - KalmanState);
   KalmanUncertainty = (1 - KalmanGain) * KalmanUncertainty;
 
