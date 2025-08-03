@@ -13,19 +13,34 @@ float Kalman1DOutput[2] = {0, 0}; // [estimated angle, uncertainty]
 unsigned long previousTime = 0;
 float dt = 0.004;
 
-// Gyroscope calibration variables
-float RateCalibrationRoll = 0;
-float RateCalibrationPitch = 0;
-float RateCalibrationYaw = 0;
+// TODO uncomment if performing IMU calibration, these are gyroscope constants
+// float RateCalibrationRoll = 0;
+// float RateCalibrationPitch = 0;
+// float RateCalibrationYaw = 0;
+
+// TODO comment out these if performing IMU calibration again, these are predefined constants to avoid calibration
+float RateCalibrationRoll = 0.08;
+float RateCalibrationPitch = -0.65;
+float RateCalibrationYaw = 0.02;
+
+
 int calibrationSamples = 2000; // Number of samples for calibration
 
 // Legacy offset variables for compatibility
 float gyro_x_offset = 0;
 float gyro_y_offset = 0;
 float gyro_z_offset = 0;
-float accel_x_offset = 0;
-float accel_y_offset = 0;
-float accel_z_offset = 0;
+
+// TODO uncomment if IMU cabliration
+// float accel_x_offset = 0;
+// float accel_y_offset = 0;
+// float accel_z_offset = 0;
+
+
+// TODO comment out these if IMU calibration
+float accel_x_offset = 9.75;
+float accel_y_offset = 0.05;
+float accel_z_offset = -9.85;
 
 
 // Cached sensor data for efficiency
@@ -67,12 +82,16 @@ void configIMU() {
   imu.setGyrSampleRateDivider(0);  // 1kHz / (1 + 0) = 1kHz
   imu.setAccSampleRateDivider(0);  // 1kHz / (1 + 0) = 1kHz
 
-  Serial.println("Keep IMU still. Calibrating gyroscope and accelerometer...");
+  Serial.println("Using fixed IMU constants...");
   delay(1000);
 
-  // Perform calibrations
-  calibrateGyroscope();
-  calibrateGyroAccel();
+  // TODO comment these out if IMU calibration
+  imu.setGyrOffsets(RateCalibrationRoll, RateCalibrationPitch, RateCalibrationYaw);
+  Serial.println("Gyroscope offsets applied.");
+
+  // TODO uncomment these if IMU calibration
+  // calibrateGyroscope();
+  // calibrateGyroAccel();
 
   // Initialize Kalman filter
   KalmanAngleRoll = 0;
