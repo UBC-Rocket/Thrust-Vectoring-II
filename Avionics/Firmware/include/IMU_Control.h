@@ -25,10 +25,6 @@ extern float RateCalibrationYaw;
 extern int calibrationSamples;
 
 // Offset variables for sensor calibration
-
-extern float gyro_x_offset;
-extern float gyro_y_offset;
-extern float gyro_z_offset;
 extern float accel_x_offset;
 extern float accel_y_offset;
 extern float accel_z_offset;

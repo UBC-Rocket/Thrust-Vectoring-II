@@ -26,10 +26,6 @@ float RateCalibrationYaw = 0.02;
 
 int calibrationSamples = 2000; // Number of samples for calibration
 
-// Legacy offset variables for compatibility
-float gyro_x_offset = 0;
-float gyro_y_offset = 0;
-float gyro_z_offset = 0;
 
 // TODO uncomment if IMU cabliration
 // float accel_x_offset = 0;
