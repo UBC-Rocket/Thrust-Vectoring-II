@@ -8,7 +8,7 @@
 #include "FS.h"
 #include "SPIFFS.h"
 
-void beginFlight();
+bool beginFlight();
 
 #ifndef MAIN_H_FLIGHT_PHASE
 #define MAIN_H_FLIGHT_PHASE

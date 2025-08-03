@@ -277,7 +277,7 @@ bool verifyHMAC(const uint8_t* data, size_t data_len, const uint8_t* hmac) {
 }
 
 
-void remoteControl(void (*beginFlight)()) {
+void remoteControl(bool (*beginFlight)()) {
     WiFiClient client = wifiServer.available();
     
     if (client) {
@@ -386,9 +386,14 @@ void remoteControl(void (*beginFlight)()) {
             
             // Process command ('A' for flight initiation)
             if (decryptedLen > 0 && decryptedData[0] == 'A') {
-                Serial.println("Valid 'A' command received, initiating flight");
-                beginFlight();
-                ack = {true, millis(), WifiStatus::SUCCESS, "Flight initiated"};
+                Serial.println("Valid 'A' command received, attempting to initiate flight...");
+                if (beginFlight()) {
+                    // Success: beginFlight returned true
+                    ack = {true, millis(), WifiStatus::SUCCESS, "Flight initiated"};
+                } else {
+                    // Failure: beginFlight returned false because rocket was not in IDLE state
+                    ack = {false, millis(), WifiStatus::INVALID_COMMAND, "Command ignored: Not in IDLE state."};
+                }
             } else {
                 Serial.print("Invalid command: ");
                 for (size_t i = 0; i < decryptedLen; i++) {

@@ -25,6 +25,15 @@ bool ignitionActive = false;
 FlightPhase currentPhase = IDLE;
 
 
+// --- Non-Blocking Scheduler Timers ---
+unsigned long lastPidTime = 0;
+unsigned long lastLogTime = 0;
+
+// --- Task Intervals (in milliseconds) ---
+const unsigned long PID_INTERVAL = 10;     // Run PID at 100Hz
+const unsigned long LOG_INTERVAL = 50;     // Log data at 20Hz
+
+
 // Function to handle ignition circuit safety
 void handleIgnitionSafety() {
   if (ignitionActive && (millis() - ignitionTime >= IGNITION_DURATION)) {
@@ -105,34 +114,37 @@ void setup() {
 
 
 void loop() {
+  unsigned long currentTime = millis();
   // Process state machine transitions first
   processStateMachine();
   
   // Apply appropriate control based on current state
   // Only run PID control during active flight phases that need it
   if (currentPhase == IGNITION || currentPhase == POWERED_FLIGHT) {
+    if (currentTime - lastPidTime >= PID_INTERVAL) {
+      lastPidTime = currentTime;
       PID_Loop();
+    }
   }
   
   // Process ignition circuit safety shutdown
   handleIgnitionSafety();
   
-  // Handle communication and other background tasks
-  if (currentPhase == IDLE || currentPhase == LANDED) {
-    remoteControl(beginFlight);
-  }
+  remoteControl(beginFlight);
 
   if (currentPhase == IGNITION || currentPhase == POWERED_FLIGHT || currentPhase == COASTING) {
-    currentData.save_values();
+    if (currentTime - lastLogTime >= LOG_INTERVAL) {
+      lastLogTime = currentTime;
+      currentData.save_values();
+    }
   }
 
   yield();
-  delay(4);
 }
 
 
 // Flip PMOS and NMOS states for ignition control, begin gimbal control and data logging
-void beginFlight() {
+bool beginFlight() {
   Serial.println("CONNECTED");
   
   if (currentPhase == IDLE) {
@@ -149,9 +161,13 @@ void beginFlight() {
       // Change to IGNITION state
       changeFlightPhase(POWERED_FLIGHT);
       started = true; // Maintain compatibility with existing code
+
+      Serial.println("Ignition circuit activated");
+      return true; // <<< REPORT SUCCESS
       
       Serial.println("Ignition circuit activated");
   } else {
       Serial.println("Command ignored - rocket not in IDLE state");
+      return false; // <<< REPORT FAILURE
   }
 }

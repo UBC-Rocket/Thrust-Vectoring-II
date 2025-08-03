@@ -45,7 +45,7 @@ extern uint8_t currentNonce[NONCE_SIZE];
 // Core functions
 bool initWifiAccessPoint(); // Now returns bool for error checking
 bool startWifiServer(); // Now returns bool for error checking
-void remoteControl(void (*beginFlight)());
+void remoteControl(bool (*beginFlight)());
 
 // Security functions
 bool generateSecurityParameters();
