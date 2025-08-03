@@ -130,7 +130,10 @@ void loop() {
   // Process ignition circuit safety shutdown
   handleIgnitionSafety();
   
-  remoteControl(beginFlight);
+  if (currentPhase == IDLE || currentPhase == LANDED) {
+    remoteControl(beginFlight);
+  }
+
 
   if (currentPhase == IGNITION || currentPhase == POWERED_FLIGHT || currentPhase == COASTING) {
     if (currentTime - lastLogTime >= LOG_INTERVAL) {
