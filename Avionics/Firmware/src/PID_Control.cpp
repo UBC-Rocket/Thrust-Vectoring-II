@@ -10,7 +10,9 @@
 Servo gimbal_x;
 Servo gimbal_y;
 Servo parachute;
-const double Kp = 1.1981, Ki = 1.2788, Kd = 0.7;
+
+// const double Kp = 1, Ki = 0, Kd = 0;
+const double Kp = 0.905281963402547, Ki = 0.784899242977193, Kd = 0.568229065678704;
 double setpointX = 0.0, inputX, outputX; // X-axis PID variables
 double setpointY = 0.0, inputY, outputY; // Y-axis PID variables
 
