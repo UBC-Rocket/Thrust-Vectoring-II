@@ -1,0 +1,121 @@
+% Simple PID Tuning Script for tferX
+% Generates a PID controller with specified crossover frequency, phase margin,
+% and gain margin, and displays performance metrics.
+
+clear;
+clc;
+flight_data_file = "flight_data_03-08-2025.csv";
+flight_data = readtable(flight_data_file);
+
+outputX = flight_data.InputX; % "InputX" is the Kalmann filtered angle
+inputX = flight_data.OutputX; % "OutputX" is the PID control factor 
+
+outputY = flight_data.InputY;
+inputY = flight_data.OutputY;
+
+time = flight_data.Time_ms_;
+Ts = 50/1000;
+for
+
+sysX = ssest(inputX, outputX, 8, 'Ts', Ts);
+
+
+tferX = idtf(sysX);
+
+
+%tfedit = tf(num, den, Ts);
+% Specify target tuning parameters
+target_wc = 2; % Target crossover frequency (rad/s)
+target_pm = 75;  % Target phase margin (degrees)
+
+% Create PID tuning options
+opts = pidtuneOptions('PhaseMargin', target_pm,'CrossoverFrequency', target_wc);
+
+% Tune the PID controller
+try
+    [C, info] = pidtune(tferX, 'pid', opts);
+catch e
+    fprintf('Error tuning PID controller: %s\n', e.message);
+    return;
+end
+
+% Display PID controller
+disp('Tuned PID Controller:');
+disp(C);
+
+% Display tuning information
+disp('Tuning Information:');
+disp(['Stable: ', num2str(info.Stable)]);
+disp(['Achieved Crossover Frequency: ', num2str(info.CrossoverFrequency), ' rad/s']);
+disp(['Achieved Phase Margin: ', num2str(info.PhaseMargin), ' degrees']);
+
+% Form open-loop and closed-loop systems
+open_loop = series(C, tferX);
+closed_loop = feedback(open_loop, 1);
+
+% Check closed-loop stability
+poles = pole(closed_loop);
+pole_magnitudes = abs(poles);
+disp('Closed-loop Poles:');
+disp(poles);
+disp('Pole Magnitudes:');
+disp(pole_magnitudes);
+if all(pole_magnitudes < 1)
+    disp('Closed-loop system is stable');
+else
+    disp('Closed-loop system is unstable');
+end
+
+% Compute performance metrics
+s = stepinfo(closed_loop);
+[gm, pm, wcg, wcp] = margin(open_loop);
+
+% Display performance metrics
+disp('Performance Metrics:');
+disp(['Overshoot: ', num2str(s.Overshoot), ' %']);
+disp(['Rise Time: ', num2str(s.RiseTime), ' s']);
+disp(['Settling Time: ', num2str(s.SettlingTime), ' s']);
+disp(['Gain Margin: ', num2str(gm), ' dB']);
+disp(['Phase Margin: ', num2str(pm), ' degrees']);
+disp(['Gain Crossover Frequency (Wcg): ', num2str(wcg), ' rad/s']);
+disp(['Phase Crossover Frequency (Wcp): ', num2str(wcp), ' rad/s']);
+
+% Plot step response
+figure;
+step(closed_loop, 5); % Simulate for 5 seconds
+title('Closed-Loop Step Response');
+xlabel('Time (s)');
+ylabel('Output');
+grid on;
+
+% Plot Bode plot with margins
+figure;
+margin(open_loop);
+title('Open-Loop Bode Plot with Margins');
+grid on;
+
+% Simulate closed-loop step response
+t = 0:Ts:5; % Time vector (0 to 5 seconds)
+[y, t, x] = step(closed_loop, t); % Output (y), time (t), and state (x)
+u = ones(size(t)); % Step input (constant 1)
+
+% Save simulation data and metrics to .mat file
+save('closed_loop_simulation.mat', 't', 'y', 'u', 'poles', 'pole_magnitudes', ...
+     's', 'gm', 'pm', 'wcg', 'wcp', 'C', 'info');
+
+% Save simulation data and metrics to .csv file
+data_table = table(t, y, u, ...
+                   'VariableNames', {'Time_s', 'Output', 'Input'});
+writetable(data_table, 'closed_loop_simulationX.csv');
+metrics_table = table(s.Overshoot, s.RiseTime, s.SettlingTime, gm, pm, wcg, wcp, ...
+                     info.Stable, info.CrossoverFrequency, info.PhaseMargin, ...
+                     C.Kp, C.Ki, C.Kd, ...
+                     'VariableNames', {'Overshoot_pct', 'RiseTime_s', 'SettlingTime_s', ...
+                                       'GainMargin_dB', 'PhaseMargin_deg', ...
+                                       'Wcg_rad_s', 'Wcp_rad_s', 'Stable', ...
+                                       'AchievedCrossoverFrequency_rad_s', ...
+                                       'AchievedPhaseMargin_deg', 'Kp', 'Ki', 'Kd'});
+writetable(metrics_table, 'closed_loop_metricsX.csv');
+
+disp('Simulation data saved to closed_loop_simulationX.mat and closed_loop_simulationX.csv');
+disp('Performance metrics saved to closed_loop_metricsX.csv');

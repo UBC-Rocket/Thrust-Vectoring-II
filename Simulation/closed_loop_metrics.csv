@@ -1,0 +1,2 @@
+Overshoot_pct,RiseTime_s,SettlingTime_s,GainMargin_dB,PhaseMargin_deg,Wcg_rad_s,Wcp_rad_s,Stable,AchievedCrossoverFrequency_rad_s,AchievedPhaseMargin_deg,Kp,Ki,Kd
+4.65616207632171,1.4,3.9,50.3856604452128,65.2783045795941,14.9240753582796,1.00001976881241,1,1,65.2787261376662,-0.31719642802546,-2.44357217599153,-0.00640267809064178

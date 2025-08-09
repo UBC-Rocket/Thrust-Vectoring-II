@@ -1,0 +1,51 @@
+flight_data_file = "flight_data_03-08-2025.csv";
+flight_data = readtable(flight_data_file);
+
+outputX = flight_data.InputX; % "InputX" is the Kalmann filtered angle
+inputX = flight_data.OutputX; % "OutputX" is the PID control factor 
+
+outputY = flight_data.InputY;
+inputY = flight_data.OutputY;
+time = flight_data.Time_ms_;
+time_step = (time(end) - time(2))/length(time);
+Ts = 50/1000;
+for ind = 1:length(time)
+    time(ind) = time_step*ind;
+end
+
+sysX = ssest(inputX, outputX, 2, 'Ts', Ts);
+sysY = ssest(inputY, outputY, 2, 'Ts', Ts);
+
+tferX = idtf(sysX);
+tferY = idtf(sysY);
+
+input_x_vals = timeseries(inputX, time);
+output_x_vals = timeseries(outputX, time);
+input_y_vals = timeseries(inputY, time);
+output_y_vals = timeseries(inputY, time);
+
+%bode(tferX);
+%bode(tferY);
+
+%pidTuner(tferX, 'PID')
+%Kp = 0.5; Ki = 0.65969;
+%Kd = 0.52449;
+Kpx=0.905281963402547;
+Kix=0.684899242977193;
+Kdx=0.568229065678704;
+
+Kpy=0.905281963402547;
+Kiy=0.684899242977193;
+Kdy=0.568229065678704;
+
+pid_ctrlx = pid(Kpx, Kix, Kdx, 'Ts', Ts);
+pid_ctrly = pid(Kpy, Kiy, Kdy, 'Ts', Ts);
+
+opentfX = series(pid_ctrlx, tferX);
+opentfY = series(pid_ctrly, tferY);
+figure; 
+bode(opentfX);
+figure;
+bode(opentfY)
+grid on;
+[Gm, Pm, Wcg, Wcp] = margin(opentfX)
