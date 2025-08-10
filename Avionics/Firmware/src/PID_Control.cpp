@@ -11,8 +11,12 @@ Servo gimbal_x;
 Servo gimbal_y;
 Servo parachute;
 
-const double Kp_x = 0.7539*2, Ki_x = 0.7231*1.1, Kd_x = 0.1965;
-const double Kp_y = 0.8703*2, Ki_y = 3.3253*1.1, Kd_y = 0.0569;
+const double Kp_x = 0.118766931231183, Ki_x = 0.0295143421677843, Kd_x = 0.116457029934289;
+const double Kp_y = 0.118766931231183, Ki_y = 0.0295143421677843, Kd_y = 0.116457029934289;
+
+// DO Not Delete: For Testing
+// const double Kp_x = 1, Ki_x = 0, Kd_x = 0;
+// const double Kp_y = 1, Ki_y = 0, Kd_y = 0;
 
 double setpointX = 0.0, inputX, outputX; // X-axis PID variables
 double setpointY = 0.0, inputY, outputY; // Y-axis PID variables
